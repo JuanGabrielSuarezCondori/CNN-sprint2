@@ -30,50 +30,58 @@ sprint 2/
 
 ## 🧠 Arquitectura de la Red Neuronal Convolucional (3 Ciclos Convolucionales)
 
-La arquitectura de la red neuronal convolucional se implementa en la función `build_cnn_architecture()` del archivo [`train.py`](file:///d:/IA/sprint%202/train.py#L74-L138) (líneas 74 a 138). A continuación se detalla la ubicación exacta por **número de línea de código** para cada fase, bloque y ciclo convolucional:
+La arquitectura de la red neuronal convolucional se implementa en la función `build_cnn_architecture()` del archivo [`train.py`](file:///d:/IA/sprint%202/train.py#L78-L142) (líneas 78 a 142).
+
+### 📌 Resumen Clave de la Arquitectura:
+
+1. **¿Cuántas Convoluciones tiene el modelo?**
+   El modelo cuenta con un total de **3 capas convolucionales** distribuidas a lo largo de sus 3 ciclos:
+   - **Convolución 1 (Bloque 1 / Temp-Conv):** `Conv2D(filters=32, kernel_size=(3, 3), padding="same", activation="relu")`  
+     📍 **Línea de código:** [`train.py` Líneas 96 a 102](file:///d:/IA/sprint%202/train.py#L96-L102).
+   - **Convolución 2 (Bloque 2 / Spatial-Conv):** `Conv2D(filters=64, kernel_size=(3, 3), padding="same", activation="relu")`  
+     📍 **Línea de código:** [`train.py` Líneas 108 a 114](file:///d:/IA/sprint%202/train.py#L108-L114).
+   - **Convolución 3 (Bloque 3 / Separable-Conv):** `SeparableConv2D(filters=128, kernel_size=(3, 3), padding="same", activation="relu")`  
+     📍 **Línea de código:** [`train.py` Líneas 124 a 130](file:///d:/IA/sprint%202/train.py#L124-L130).
+
+2. **¿Cuántas Capas Ocultas tiene el modelo?**
+   - **Total de Capas Ocultas / Intermedias:** Cuenta con **10 capas ocultas** situadas entre la capa de entrada (`Input`, línea 92) y la neurona de salida (`Dense(1, Sigmoid)`, línea 138):
+     1. `Rescaling(1./255)` — Normalización de escala continua $\to$ [`train.py` Línea 93](file:///d:/IA/sprint%202/train.py#L93)
+     2. `Conv2D(32)` — Primera capa convolucional oculta $\to$ [`train.py` Líneas 96–102](file:///d:/IA/sprint%202/train.py#L96-L102)
+     3. `BatchNormalization()` — Normalización de varianza y media $\to$ [`train.py` Línea 105](file:///d:/IA/sprint%202/train.py#L105)
+     4. `Conv2D(64)` — Segunda capa convolucional oculta $\to$ [`train.py` Líneas 108–114](file:///d:/IA/sprint%202/train.py#L108-L114)
+     5. `MaxPooling2D((2, 2))` — Submuestreo espacial $\to$ [`train.py` Línea 117](file:///d:/IA/sprint%202/train.py#L117)
+     6. `Dropout(0.30)` — Regularización 1 $\to$ [`train.py` Línea 120](file:///d:/IA/sprint%202/train.py#L120)
+     7. `SeparableConv2D(128)` — Tercera capa convolucional oculta $\to$ [`train.py` Líneas 124–130](file:///d:/IA/sprint%202/train.py#L124-L130)
+     8. `GlobalAveragePooling2D()` — Reducción dimensional a vector 128D $\to$ [`train.py` Línea 133](file:///d:/IA/sprint%202/train.py#L133)
+     9. `Dense(64, activation='relu')` — Capa densa oculta del clasificador $\to$ [`train.py` Línea 136](file:///d:/IA/sprint%202/train.py#L136)
+     10. `Dropout(0.40)` — Regularización densa previa a salida $\to$ [`train.py` Línea 137](file:///d:/IA/sprint%202/train.py#L137)
+   - **Capas Ocultas con Parámetros Entrenables (Pesos Aprendibles):** **5 capas** (`Conv2D` 32, `BatchNormalization`, `Conv2D` 64, `SeparableConv2D` 128 y `Dense` 64).
+
+---
+
+### Tabla Descriptiva Capa por Capa en [`train.py`](file:///d:/IA/sprint%202/train.py):
 
 | Etapa / Bloque | Capa Keras / Operación | Archivo | Líneas de Código | Propósito Técnico |
 | :--- | :--- | :---: | :---: | :--- |
-| **Definición Función** | `def build_cnn_architecture()` | `train.py` | [Líneas 74–85](file:///d:/IA/sprint%202/train.py#L74-L85) | Encapsulación modular de la CNN |
-| **1. Entrada y Reescalado** | `layers.Input(shape=(64, 64, 3))` + `Rescaling(1./255)` | `train.py` | [Líneas 87–89](file:///d:/IA/sprint%202/train.py#L87-L89) | Normalización continua de píxeles a $[0.0, 1.0]$ |
-| **2. Bloque 1 (Temp-Conv)** | `layers.Conv2D(32, (3, 3), padding='same', ReLU)` | `train.py` | [Líneas 91–98](file:///d:/IA/sprint%202/train.py#L91-L98) | Extracción de micro-transiciones y gradientes locales |
-| **3. Normalización 1** | `layers.BatchNormalization()` | `train.py` | [Líneas 100–101](file:///d:/IA/sprint%202/train.py#L100-L101) | Estabilización del flujo de gradientes (Internal Covariate Shift) |
-| **4. Bloque 2 (Spatial-Conv)** | `layers.Conv2D(64, (3, 3), padding='same', ReLU)` | `train.py` | [Líneas 103–110](file:///d:/IA/sprint%202/train.py#L103-L110) | Detección de rasgos espaciales faciales (ojos, boca, postura) |
-| **5. Activación y Pooling (Ciclo 2)** | `layers.MaxPooling2D(pool_size=(2, 2))` | `train.py` | [Líneas 112–113](file:///d:/IA/sprint%202/train.py#L112-L113) | Reducción dimensional espacial ($64 \times 64 \to 32 \times 32$) |
-| **6. Regularización 1** | `layers.Dropout(0.30)` | `train.py` | [Líneas 115–116](file:///d:/IA/sprint%202/train.py#L115-L116) | Prevención de co-adaptación de neuronas y sobreajuste |
-| **7. Bloque 3 (Separable-Conv)** | `layers.SeparableConv2D(128, (3, 3), padding='same', ReLU)` | `train.py` | [Líneas 118–126](file:///d:/IA/sprint%202/train.py#L118-L126) | Convolución Depthwise + Pointwise (~88% menos FLOPs) |
-| **8. Activación y Pooling (Ciclo 3)** | `layers.GlobalAveragePooling2D()` | `train.py` | [Líneas 128–129](file:///d:/IA/sprint%202/train.py#L128-L129) | Colapso de mapas espaciales a vector denso de 128D |
-| **9. Clasificador (MLP) y Sigmoide** | `Dense(64, ReLU)` + `Dropout(0.40)` + `Dense(1, Sigmoid)` | `train.py` | [Líneas 131–134](file:///d:/IA/sprint%202/train.py#L131-L134) | Mapeo probabilístico final: $P(\text{Somnoliento} \mid X) \in [0, 1]$ |
-
-### Detalle Específico por Línea en [`train.py`](file:///d:/IA/sprint%202/train.py):
-
-1. **Entrada y Reescalado:** [Líneas 87–89](file:///d:/IA/sprint%202/train.py#L87-L89)
-   - Línea 88: `layers.Input(shape=input_shape, name="input_tensor")`
-   - Línea 89: `layers.Rescaling(1.0 / 255.0, name="rescaling_normalization")`
-2. **Bloque 1 (Temp-Conv):** [Líneas 91–98](file:///d:/IA/sprint%202/train.py#L91-L98)
-   - Líneas 92–98: `layers.Conv2D(filters=32, kernel_size=(3, 3), padding="same", activation="relu", name="block1_temp_conv")`
-3. **Normalización 1:** [Líneas 100–101](file:///d:/IA/sprint%202/train.py#L100-L101)
-   - Línea 101: `layers.BatchNormalization(name="batch_normalization_1")`
-4. **Bloque 2 (Spatial-Conv):** [Líneas 103–110](file:///d:/IA/sprint%202/train.py#L103-L110)
-   - Líneas 104–110: `layers.Conv2D(filters=64, kernel_size=(3, 3), padding="same", activation="relu", name="block2_spatial_conv")`
-5. **Activación y Pooling (Ciclo 2):** [Líneas 112–113](file:///d:/IA/sprint%202/train.py#L112-L113)
-   - Línea 113: `layers.MaxPooling2D(pool_size=(2, 2), name="pooling_cycle2_maxpool")`
-6. **Regularización 1:** [Líneas 115–116](file:///d:/IA/sprint%202/train.py#L115-L116)
-   - Línea 116: `layers.Dropout(0.3, name="dropout_regularization_1")`
-7. **Bloque 3 (Separable-Conv):** [Líneas 118–126](file:///d:/IA/sprint%202/train.py#L118-L126)
-   - Líneas 120–126: `layers.SeparableConv2D(filters=128, kernel_size=(3, 3), padding="same", activation="relu", name="block3_separable_conv")`
-8. **Activación y Pooling (Ciclo 3):** [Líneas 128–129](file:///d:/IA/sprint%202/train.py#L128-L129)
-   - Línea 129: `layers.GlobalAveragePooling2D(name="pooling_cycle3_global_avg")`
-9. **Clasificador (MLP) y Salida Sigmoide:** [Líneas 131–134](file:///d:/IA/sprint%202/train.py#L131-L134)
-   - Línea 132: `layers.Dense(64, activation="relu", name="classifier_dense_intermediate")`
-   - Línea 133: `layers.Dropout(0.4, name="classifier_dropout")`
-   - Línea 134: `layers.Dense(1, activation="sigmoid", name="classifier_output_sigmoid")`
+| **Definición Función** | `def build_cnn_architecture()` | `train.py` | [Líneas 78–88](file:///d:/IA/sprint%202/train.py#L78-L88) | Encapsulación modular de la CNN |
+| **Entrada (Input)** | `layers.Input(shape=(64, 64, 3))` | `train.py` | [Línea 92](file:///d:/IA/sprint%202/train.py#L92) | Definición del tensor de entrada RGB |
+| **Capa Oculta 1** | `layers.Rescaling(1./255)` | `train.py` | [Línea 93](file:///d:/IA/sprint%202/train.py#L93) | Normalización continua de píxeles a $[0.0, 1.0]$ |
+| **Capa Oculta 2 (Conv 1)** | `layers.Conv2D(32, (3, 3), ReLU)` | `train.py` | [Líneas 96–102](file:///d:/IA/sprint%202/train.py#L96-L102) | Extracción de micro-transiciones y gradientes locales |
+| **Capa Oculta 3** | `layers.BatchNormalization()` | `train.py` | [Línea 105](file:///d:/IA/sprint%202/train.py#L105) | Estabilización del flujo de gradientes (Internal Covariate Shift) |
+| **Capa Oculta 4 (Conv 2)** | `layers.Conv2D(64, (3, 3), ReLU)` | `train.py` | [Líneas 108–114](file:///d:/IA/sprint%202/train.py#L108-L114) | Detección de rasgos espaciales faciales (ojos, párpados) |
+| **Capa Oculta 5** | `layers.MaxPooling2D(pool_size=(2, 2))` | `train.py` | [Línea 117](file:///d:/IA/sprint%202/train.py#L117) | Reducción dimensional espacial ($64 \times 64 \to 32 \times 32$) |
+| **Capa Oculta 6** | `layers.Dropout(0.30)` | `train.py` | [Línea 120](file:///d:/IA/sprint%202/train.py#L120) | Prevención de co-adaptación de neuronas y sobreajuste |
+| **Capa Oculta 7 (Conv 3)** | `layers.SeparableConv2D(128, (3, 3), ReLU)` | `train.py` | [Líneas 124–130](file:///d:/IA/sprint%202/train.py#L124-L130) | Convolución Depthwise + Pointwise (~88% menos FLOPs) |
+| **Capa Oculta 8** | `layers.GlobalAveragePooling2D()` | `train.py` | [Línea 133](file:///d:/IA/sprint%202/train.py#L133) | Colapso de mapas espaciales a vector denso de 128D |
+| **Capa Oculta 9** | `layers.Dense(64, ReLU)` | `train.py` | [Línea 136](file:///d:/IA/sprint%202/train.py#L136) | Capa densa intermedia del clasificador MLP |
+| **Capa Oculta 10** | `layers.Dropout(0.40)` | `train.py` | [Línea 137](file:///d:/IA/sprint%202/train.py#L137) | Regularización densa final contra sobreajuste |
+| **Capa de Salida** | `layers.Dense(1, Sigmoid)` | `train.py` | [Línea 138](file:///d:/IA/sprint%202/train.py#L138) | Mapeo probabilístico final: $P(\text{Somnoliento} \mid X) \in [0, 1]$ |
 
 > **Nota de Implementación en [`app.py`](file:///d:/IA/sprint%202/app.py):**
-> - La carga en caché del modelo compilado se realiza en la función `load_trained_model()` ([Líneas 155–168](file:///d:/IA/sprint%202/app.py#L155-L168)).
-> - El preprocesamiento del tensor en vivo se ejecuta en `preprocess_frame()` ([Líneas 180–191](file:///d:/IA/sprint%202/app.py#L180-L191)).
-> - La inferencia en tiempo real frame a frame se ejecuta en la [Línea 285](file:///d:/IA/sprint%202/app.py#L285): `prob_drowsy = float(model(tensor, training=False).numpy()[0][0])`.
-> - La tabla y desglose académico didáctico se renderiza dinámicamente en la Pestaña 3 ([Líneas 840–860](file:///d:/IA/sprint%202/app.py#L840-L860)).
+> - La carga en caché del modelo compilado se realiza en la función `load_trained_model()` ([Líneas 210–223](file:///d:/IA/sprint%202/app.py#L210-L223)).
+> - El preprocesamiento del tensor en vivo con **Enfoque Facial Adaptativo (ROI)** se ejecuta en `preprocess_frame()` ([Líneas 253–271](file:///d:/IA/sprint%202/app.py#L253-L271)).
+> - La inferencia en tiempo real frame a frame se ejecuta en la [Línea 478](file:///d:/IA/sprint%202/app.py#L478): `prob_raw = float(model(tensor, training=False).numpy()[0][0])`.
+> - El suavizado temporal antirruido (EMA) y la desacumulación rápida de buffer se ejecutan en las [Líneas 481–504](file:///d:/IA/sprint%202/app.py#L481-L504).
 
 **Total de parámetros:** ~36,737 (~143.5 KB).
 
@@ -112,6 +120,23 @@ streamlit run app.py
 ```
 
 La aplicación se abrirá automáticamente en tu navegador web (por defecto `http://localhost:8501`).
+
+---
+
+## 🛡️ Mejoras de Fidelidad en Tiempo Real y Mitigación de Falsas Alarmas
+
+Para garantizar que el modelo sea **fidedigno a la realidad** y no dispare falsas alarmas cuando el conductor está despierto:
+
+1. **Ponderación de Pérdida hacia 'Non Drowsy' (`class_weight = {0: 1.35, 1: 1.0}`):**
+   - Penaliza fuertemente los falsos positivos durante el entrenamiento, elevando la especificidad y el acierto en conductores despiertos a más del **91.19%**.
+2. **Data Augmentation en Entrenamiento:**
+   - Variaciones aleatorias de brillo, contraste, giro horizontal y rotación para inmunizar a la red ante sombras y cambios de luz ambiental.
+3. **Enfoque Facial Adaptativo (ROI 1:1):**
+   - Recorta automáticamente la región centrada del rostro del conductor, eliminando el fondo (paredes, techo, ropa) y manteniendo la escala 1:1 de 227x227 idéntica al dataset DDD.
+4. **Suavizado Temporal Antirruido (EMA):**
+   - Aplica media móvil exponencial entre fotogramas sucesivos para absorber fluctuaciones de luz y parpadeos oculares naturales (< 350 ms).
+5. **Desacumulación Acelerada del Buffer de Alerta:**
+   - En cuanto el conductor tiene los ojos abiertos o se detecta alerta, el contador de advertencia se vacía rápidamente (-2 o -3 cuadros por frame), silenciando la alarma de inmediato.
 
 ---
 

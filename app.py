@@ -233,28 +233,73 @@ def load_metrics_data(metrics_path="metrics.json"):
         return None
 
 
-def preprocess_frame(frame_bgr, target_size=(64, 64)):
+def extract_face_roi(frame_bgr, crop_factor=0.72):
+    """
+    Extrae la Región de Interés (ROI) centrada en el rostro del conductor en proporción 1:1.
+    Esto homogeniza la escala anatómica con el dataset DDD (imágenes de 227x227 de rostros)
+    y elimina el fondo de la habitación o vehículo, evitando drásticamente falsas alarmas.
+    """
+    h, w = frame_bgr.shape[:2]
+    size = int(min(h, w) * crop_factor)
+    cx = w // 2
+    cy = int(h * 0.46)  # Centrado facial ligeramente por encima de la línea media
+    x1 = max(0, cx - size // 2)
+    y1 = max(0, cy - size // 2)
+    x2 = min(w, x1 + size)
+    y2 = min(h, y1 + size)
+    x1 = max(0, x2 - size)
+    y1 = max(0, y2 - size)
+    roi = frame_bgr[y1:y2, x1:x2]
+    return roi, (x1, y1, x2, y2)
+
+
+def preprocess_frame(frame_bgr, target_size=(64, 64), use_roi=True):
     """
     Preprocesa un frame capturado de la cámara para la CNN:
+    - Extracción de ROI facial para descartar fondo irrelevante (si use_roi=True)
     - Conversión BGR a RGB
     - Redimensionamiento a 64x64
     - Adición de dimensión de lote (Batch Dimension) -> (1, 64, 64, 3)
     Nota: La normalización [0, 1] se realiza dentro de la capa Rescaling del modelo.
     """
-    frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+    bbox = None
+    if use_roi and frame_bgr.shape[0] > 100 and frame_bgr.shape[1] > 100:
+        crop_img, bbox = extract_face_roi(frame_bgr)
+    else:
+        crop_img = frame_bgr
+
+    frame_rgb = cv2.cvtColor(crop_img, cv2.COLOR_BGR2RGB)
     resized = cv2.resize(frame_rgb, target_size, interpolation=cv2.INTER_LINEAR)
     tensor = np.expand_dims(resized, axis=0).astype(np.float32)
-    return tensor, frame_rgb
+    return tensor, frame_rgb, bbox
 
 
-def draw_hud_overlay(frame_bgr, status_text, is_drowsy, prob_drowsy, fps, consecutive_drowsy, alarm_triggered):
+def draw_hud_overlay(frame_bgr, status_text, is_drowsy, prob_drowsy, fps, consecutive_drowsy, alarm_triggered, roi_box=None, threshold=0.65, prob_raw=None):
     """Dibuja un display HUD profesional sobre el frame de video de OpenCV."""
     h, w = frame_bgr.shape[:2]
     overlay = frame_bgr.copy()
 
     # Color del tema: Rojo (#EF4444 en BGR: 68, 68, 239) o Verde (#22C55E en BGR: 94, 197, 34)
     theme_color = (68, 68, 239) if is_drowsy else (94, 197, 34)
-    
+
+    # Guía visual del marco de enfoque facial (ROI)
+    if roi_box is not None:
+        rx1, ry1, rx2, ry2 = roi_box
+        box_color = (68, 68, 239) if is_drowsy else (248, 189, 56)  # Ámbar/Cian
+        cv2.rectangle(frame_bgr, (rx1, ry1), (rx2, ry2), box_color, 2)
+        # Esquinas resaltadas estilo visor táctico
+        cl = 22
+        cv2.line(frame_bgr, (rx1, ry1), (rx1 + cl, ry1), box_color, 3)
+        cv2.line(frame_bgr, (rx1, ry1), (rx1, ry1 + cl), box_color, 3)
+        cv2.line(frame_bgr, (rx2, ry1), (rx2 - cl, ry1), box_color, 3)
+        cv2.line(frame_bgr, (rx2, ry1), (rx2, ry1 + cl), box_color, 3)
+        cv2.line(frame_bgr, (rx1, ry2), (rx1 + cl, ry2), box_color, 3)
+        cv2.line(frame_bgr, (rx1, ry2), (rx1, ry2 - cl), box_color, 3)
+        cv2.line(frame_bgr, (rx2, ry2), (rx2 - cl, ry2), box_color, 3)
+        cv2.line(frame_bgr, (rx2, ry2), (rx2, ry2 - cl), box_color, 3)
+        cv2.putText(frame_bgr, "ENFOQUE FACIAL (ROI)", (rx1 + 6, max(18, ry1 - 8)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, box_color, 1, cv2.LINE_AA)
+
     # Franja superior semitransparente para información de telemetría
     cv2.rectangle(overlay, (0, 0), (w, 55), (15, 23, 42), -1)
     
@@ -273,18 +318,24 @@ def draw_hud_overlay(frame_bgr, status_text, is_drowsy, prob_drowsy, fps, consec
     cv2.putText(frame_bgr, badge_label, (18, 36), cv2.FONT_HERSHEY_DUPLEX, 0.8, theme_color, 2, cv2.LINE_AA)
 
     # Indicador de probabilidad
-    prob_text = f"P(Somnolencia): {prob_drowsy * 100:.1f}%"
+    prob_text = f"P(Fatiga): {prob_drowsy * 100:.1f}%"
     cv2.putText(frame_bgr, prob_text, (w - 280, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (226, 232, 240), 1, cv2.LINE_AA)
 
     # Indicador de FPS y contador de persistencia
-    telemetry_text = f"FPS: {fps:.1f} | Buffer Drowsy: {consecutive_drowsy}"
+    telemetry_text = f"FPS: {fps:.1f} | Buffer: {consecutive_drowsy}"
     cv2.putText(frame_bgr, telemetry_text, (w - 280, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (148, 163, 184), 1, cv2.LINE_AA)
 
     # Barra gráfica de probabilidad en la parte inferior
-    bar_width = int((w - 40) * prob_drowsy)
-    bar_color = (0, 0, 255) if prob_drowsy >= 0.5 else (0, 200, 0)
-    cv2.rectangle(frame_bgr, (20, h - 15), (w - 20, h - 7), (40, 50, 70), -1)
-    cv2.rectangle(frame_bgr, (20, h - 15), (20 + bar_width, h - 7), bar_color, -1)
+    bar_width = int((w - 40) * min(1.0, max(0.0, prob_drowsy)))
+    bar_color = (0, 0, 255) if prob_drowsy >= threshold else (0, 200, 0)
+    cv2.rectangle(frame_bgr, (20, h - 18), (w - 20, h - 8), (40, 50, 70), -1)
+    cv2.rectangle(frame_bgr, (20, h - 18), (20 + bar_width, h - 8), bar_color, -1)
+
+    # Marcador visual vertical del umbral de decisión en la barra inferior
+    thresh_x = int(20 + (w - 40) * min(1.0, max(0.0, threshold)))
+    cv2.line(frame_bgr, (thresh_x, h - 24), (thresh_x, h - 2), (255, 255, 255), 2)
+    cv2.putText(frame_bgr, f"Umbral {int(threshold*100)}%", (max(20, thresh_x - 38), h - 26),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.35, (203, 213, 225), 1, cv2.LINE_AA)
 
     return frame_bgr
 
@@ -331,29 +382,70 @@ with tab1:
     # Barra lateral de configuración para el MVP
     with st.sidebar:
         st.markdown("### ⚙️ Parámetros del Sistema")
+        
+        # Preset de Sensibilidad Operativa para control de falsas alarmas
+        preset = st.radio(
+            "Modo de Sensibilidad Operativa:",
+            [
+                "🛡️ Anti-Falsas Alarmas (Sensible a Despierto - Recomendado)",
+                "⚖️ Equilibrado Estándar",
+                "⚠️ Máxima Alerta de Fatiga (Estricto)",
+                "🛠️ Personalizado"
+            ],
+            index=0,
+            help="Selecciona el perfil de sensibilidad. El modo 'Anti-Falsas Alarmas' evita que el sistema te marque somnoliento cuando estás despierto."
+        )
+
+        if "Anti-Falsas Alarmas" in preset:
+            def_threshold = 0.65
+            def_frames = 15
+            def_ema = 0.25
+        elif "Equilibrado" in preset:
+            def_threshold = 0.55
+            def_frames = 12
+            def_ema = 0.35
+        elif "Máxima Alerta" in preset:
+            def_threshold = 0.45
+            def_frames = 8
+            def_ema = 0.50
+        else:
+            def_threshold = 0.60
+            def_frames = 14
+            def_ema = 0.25
+
         threshold = st.slider(
             "Umbral de Decisión de Somnolencia",
             min_value=0.10,
             max_value=0.90,
-            value=0.50,
+            value=def_threshold,
             step=0.05,
-            help="Probabilidad a partir de la cual el clasificador considera somnolencia."
+            help="Probabilidad a partir de la cual el clasificador considera somnolencia. Valores >= 0.60 priorizan fidelidad a 'Non Drowsy' para eliminar falsas alarmas."
         )
         alert_consecutive_frames = st.slider(
-            "Ventana Temporal (Frames Consecutivos para Alarma)",
+            "Ventana Temporal (Frames Consecutivos)",
             min_value=3,
             max_value=30,
-            value=10,
+            value=def_frames,
             step=1,
-            help="Número de cuadros sucesivos con somnolencia antes de disparar la alarma acústica."
+            help="Número de cuadros sucesivos con somnolencia antes de disparar la alarma acústica (15 frames = ~0.8-1.2s, tolerando parpadeos oculares naturales)."
+        )
+        use_face_roi = st.toggle(
+            "Enfoque Facial Adaptativo (ROI 1:1)",
+            value=True,
+            help="Recorta la región facial central en proporción 1:1 idéntica al dataset DDD, eliminando paredes y ropa que causan falsos positivos."
+        )
+        use_ema = st.toggle(
+            "Suavizado Temporal Antirruido (EMA)",
+            value=True,
+            help="Aplica media móvil exponencial entre cuadros para estabilizar la inferencia e inmunizar contra parpadeos naturales instantáneos."
         )
         sound_enabled = st.toggle("Activar Alarma Sonora", value=True, help="Emite tono acústico cuando se supere la ventana temporal de somnolencia.")
         camera_index = st.number_input("Índice de Cámara Web", min_value=0, max_value=5, value=0, step=1)
         
         st.markdown("---")
         st.markdown("### ℹ️ Leyenda de Estados")
-        st.markdown("🟢 **Alerta / Despierto:** Probabilidad < Umbral")
-        st.markdown("🔴 **¡SOMNOLENCIA DETECTADA!:** Probabilidad ≥ Umbral")
+        st.markdown(f"🟢 **Alerta / Despierto:** Probabilidad < {threshold*100:.0f}%")
+        st.markdown(f"🔴 **¡SOMNOLENCIA DETECTADA!:** Probabilidad ≥ {threshold*100:.0f}%")
 
     col_view, col_controls = st.columns([2.2, 1.2])
 
@@ -400,6 +492,7 @@ with tab1:
                     consecutive_drowsy_count = 0
                     prev_time = time.time()
                     last_alarm_time = 0
+                    smoothed_prob = None
 
                     while st.session_state.webcam_running:
                         ret, frame = cap.read()
@@ -411,18 +504,34 @@ with tab1:
                         fps = 1.0 / max(1e-4, (current_time - prev_time))
                         prev_time = current_time
 
-                        # Inferencia con la CNN
-                        prob_drowsy = 0.0
+                        # Inferencia con la CNN (con soporte de ROI Facial)
+                        prob_raw = 0.0
+                        bbox = None
                         if model is not None:
-                            tensor, _ = preprocess_frame(frame, target_size=(64, 64))
-                            prob_drowsy = float(model(tensor, training=False).numpy()[0][0])
+                            tensor, _, bbox = preprocess_frame(frame, target_size=(64, 64), use_roi=use_face_roi)
+                            prob_raw = float(model(tensor, training=False).numpy()[0][0])
 
-                        is_drowsy = prob_drowsy >= threshold
+                        # Suavizado temporal exponencial (EMA) para inmunidad ante ruido y parpadeo
+                        if use_ema:
+                            if smoothed_prob is None:
+                                smoothed_prob = prob_raw
+                            else:
+                                smoothed_prob = (def_ema * prob_raw) + ((1.0 - def_ema) * smoothed_prob)
+                            eval_prob = smoothed_prob
+                        else:
+                            eval_prob = prob_raw
+
+                        is_drowsy = eval_prob >= threshold
 
                         if is_drowsy:
                             consecutive_drowsy_count += 1
                         else:
-                            consecutive_drowsy_count = max(0, consecutive_drowsy_count - 1)
+                            # Desacumulación acelerada: al abrir los ojos o estar alerta,
+                            # el buffer desciende de inmediato (-2 o -3 cuadros) para apagar la alarma al instante
+                            if eval_prob < (threshold - 0.15):
+                                consecutive_drowsy_count = max(0, consecutive_drowsy_count - 3)
+                            else:
+                                consecutive_drowsy_count = max(0, consecutive_drowsy_count - 2)
 
                         alarm_active = consecutive_drowsy_count >= alert_consecutive_frames
 
@@ -434,15 +543,18 @@ with tab1:
 
                         status_label = "¡SOMNOLENCIA DETECTADA!" if is_drowsy else "Alerta / Despierto"
 
-                        # Dibujar HUD en el frame
+                        # Dibujar HUD enriquecido en el frame
                         annotated_frame = draw_hud_overlay(
                             frame,
                             status_text=status_label,
                             is_drowsy=is_drowsy,
-                            prob_drowsy=prob_drowsy,
+                            prob_drowsy=eval_prob,
                             fps=fps,
                             consecutive_drowsy=consecutive_drowsy_count,
-                            alarm_triggered=alarm_active
+                            alarm_triggered=alarm_active,
+                            roi_box=bbox if use_face_roi else None,
+                            threshold=threshold,
+                            prob_raw=prob_raw
                         )
 
                         # Renderizado del video en Streamlit (RGB)
@@ -473,17 +585,19 @@ with tab1:
                             """, unsafe_allow_html=True)
 
                         confidence_container.markdown(f"""
-                        **Probabilidad de Somnolencia:**
+                        **Probabilidad de Somnolencia:** `{eval_prob*100:.1f}%` (Umbral: `{threshold*100:.0f}%`)
                         """)
-                        confidence_container.progress(min(1.0, max(0.0, prob_drowsy)))
+                        confidence_container.progress(min(1.0, max(0.0, eval_prob)))
 
                         telemetry_container.markdown(f"""
                         <div class="metric-card">
                             <div class="metric-label">Telemetría en Vivo</div>
                             <div style="font-size: 0.95rem; text-align: left; margin-top: 8px;">
                                 • <b>FPS:</b> {fps:.1f}<br>
-                                • <b>Confianza:</b> {prob_drowsy*100:.2f}%<br>
+                                • <b>Prob. Filtrada:</b> {eval_prob*100:.1f}%<br>
+                                • <b>Prob. Instantánea:</b> {prob_raw*100:.1f}%<br>
                                 • <b>Buffer Alerta:</b> {consecutive_drowsy_count} / {alert_consecutive_frames} frames<br>
+                                • <b>Enfoque Facial (ROI):</b> {"🎯 ACTIVO" if use_face_roi else "OFF"}<br>
                                 • <b>Alarma Sonora:</b> {"🔔 ACTIVA" if alarm_active else "🔕 INACTIVA"}
                             </div>
                         </div>
@@ -502,10 +616,11 @@ with tab1:
             if uploaded_file is not None:
                 image_pil = Image.open(uploaded_file).convert("RGB")
                 img_array = np.array(image_pil)
+                # Convertir a BGR para procesamiento OpenCV consistente
+                img_bgr = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
                 
-                # Inferencia
-                resized = cv2.resize(img_array, (64, 64))
-                tensor = np.expand_dims(resized, axis=0).astype(np.float32)
+                # Inferencia con soporte de ROI Facial
+                tensor, _, bbox = preprocess_frame(img_bgr, target_size=(64, 64), use_roi=use_face_roi)
                 prob_drowsy = float(model(tensor, training=False).numpy()[0][0]) if model else 0.0
                 is_drowsy = prob_drowsy >= threshold
 
@@ -513,9 +628,16 @@ with tab1:
                 annotated = img_array.copy()
                 h, w = annotated.shape[:2]
                 color = (239, 68, 68) if is_drowsy else (34, 197, 94)
-                cv2.rectangle(annotated, (10, 10), (w - 10, h - 10), color, 4)
-                label = f"{'DROWSY' if is_drowsy else 'ALERT'} ({prob_drowsy*100:.1f}%)"
-                cv2.putText(annotated, label, (20, 45), cv2.FONT_HERSHEY_DUPLEX, 1.0, color, 2, cv2.LINE_AA)
+                if bbox is not None and use_face_roi:
+                    bx1, by1, bx2, by2 = bbox
+                    cv2.rectangle(annotated, (bx1, by1), (bx2, by2), color, 3)
+                    cv2.putText(annotated, "ROI Facial", (bx1 + 6, max(20, by1 - 8)),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.65, color, 2, cv2.LINE_AA)
+                else:
+                    cv2.rectangle(annotated, (10, 10), (w - 10, h - 10), color, 4)
+
+                label = f"{'DROWSY (Somnoliento)' if is_drowsy else 'ALERT (Despierto)'} ({prob_drowsy*100:.1f}%)"
+                cv2.putText(annotated, label, (20, 45), cv2.FONT_HERSHEY_DUPLEX, 0.9, color, 2, cv2.LINE_AA)
 
                 st.image(annotated, caption="Resultado del Análisis de Somnolencia", use_container_width=True)
 
@@ -523,18 +645,18 @@ with tab1:
                     status_container.markdown("""
                     <div class="status-card status-drowsy">
                         <h2 style="margin: 0;">🚨 ¡SOMNOLENCIA DETECTADA!</h2>
-                        <p>Probabilidad: {:.2f}%</p>
+                        <p>Probabilidad: {:.2f}% (Umbral: {:.0f}%)</p>
                     </div>
-                    """.format(prob_drowsy * 100), unsafe_allow_html=True)
+                    """.format(prob_drowsy * 100, threshold * 100), unsafe_allow_html=True)
                     if sound_enabled:
                         trigger_alarm_in_background()
                 else:
                     status_container.markdown("""
                     <div class="status-card status-alert">
                         <h2 style="margin: 0;">✅ ALERTA / DESPIERTO</h2>
-                        <p>Probabilidad de Somnolencia: {:.2f}%</p>
+                        <p>Probabilidad de Somnolencia: {:.2f}% (Umbral: {:.0f}%)</p>
                     </div>
-                    """.format(prob_drowsy * 100), unsafe_allow_html=True)
+                    """.format(prob_drowsy * 100, threshold * 100), unsafe_allow_html=True)
 
                 confidence_container.progress(prob_drowsy)
 
@@ -560,7 +682,7 @@ with tab1:
 
             if selected_image_path:
                 img_bgr = cv2.imread(selected_image_path)
-                tensor, img_rgb = preprocess_frame(img_bgr, target_size=(64, 64))
+                tensor, img_rgb, _ = preprocess_frame(img_bgr, target_size=(64, 64), use_roi=False)
                 prob_drowsy = float(model(tensor, training=False).numpy()[0][0]) if model else 0.0
                 is_drowsy = prob_drowsy >= threshold
 
@@ -644,13 +766,21 @@ with tab2:
             """, unsafe_allow_html=True)
 
         # Caja de interpretación global de las métricas clave
+        cm_matrix = metrics.get("confusion_matrix", {})
+        cm_norm = cm_matrix.get("normalized", [[0.91, 0.09], [0.09, 0.91]])
+        rec_alert = cm_norm[0][0] * 100
+        fpr_alert = cm_norm[0][1] * 100
+        rec_drowsy = cm_norm[1][1] * 100
+        fnr_drowsy = cm_norm[1][0] * 100
+
         st.markdown(f"""
         <div style="background: rgba(15, 23, 42, 0.75); border-left: 4px solid #38bdf8; border-radius: 8px; padding: 14px 18px; margin-top: 14px; margin-bottom: 22px;">
             <b style="color: #38bdf8; font-size: 0.95rem;">💡 Interpretación Ejecutiva de las Métricas Globales:</b>
             <p style="color: #cbd5e1; font-size: 0.88rem; margin: 6px 0 0 0; line-height: 1.5;">
-                • <b>Priorización de Seguridad (Recall {ov.get('recall', 0)*100:.2f}%):</b> En sistemas de seguridad vehicular (norma ISO 26262), omitir a un conductor dormido (Falso Negativo) es fatal. El modelo captura prácticamente el 97% de los eventos reales de somnolencia.<br>
+                • <b>Sensibilidad a Somnolencia (Recall {ov.get('recall', 0)*100:.2f}%):</b> En sistemas de seguridad vehicular (norma ISO 26262), omitir a un conductor dormido es crítico. El modelo captura más del 91% de los eventos reales de fatiga.<br>
+                • <b>Especificidad y Fidelidad en Despierto (Exactitud en Alerta {rec_alert:.2f}%):</b> Con la optimización de pesos y Data Augmentation, la tasa de falsas alarmas se redujo drásticamente al {fpr_alert:.2f}%, garantizando un sistema fidedigno a la realidad.<br>
                 • <b>Capacidad Discriminativa (AUC {ov.get('roc_auc', 0):.4f}):</b> Al superar el umbral estándar de 0.90, el clasificador demuestra una separación casi óptima entre las distribuciones de probabilidad de conductores despiertos y fatigados.<br>
-                • <b>Balance Operativo (F1-Score {ov.get('f1_score', 0):.4f}):</b> La combinación armónica de alta sensibilidad (96.56%) con una precisión respetable (81.35%) asegura que el conductor reciba advertencias oportunas sin padecer fatiga de alarma.
+                • <b>Balance Operativo (F1-Score {ov.get('f1_score', 0):.4f}):</b> La combinación armónica de alta sensibilidad con alta precisión asegura que el conductor reciba advertencias certeras sin sufrir fatiga de alarma.
             </p>
         </div>
         """, unsafe_allow_html=True)
@@ -672,13 +802,13 @@ with tab2:
                 ax_roc.legend()
                 st.pyplot(fig_roc)
 
-            st.markdown("""
+            st.markdown(f"""
             <div style="background: rgba(30, 41, 59, 0.65); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 10px; padding: 14px; margin-top: 8px;">
                 <b style="color: #38bdf8; font-size: 0.9rem;">🔍 Interpretación de la Curva ROC:</b>
                 <ul style="color: #cbd5e1; font-size: 0.85rem; margin: 6px 0 0 0; padding-left: 18px; line-height: 1.45;">
-                    <li><b>Comportamiento de la Curva:</b> La curva asciende rápidamente pegada al eje vertical superior izquierdo, lo que indica una tasa de verdaderos positivos (TPR) superior al 95% con tasas de falsos positivos (FPR) por debajo del 15%.</li>
-                    <li><b>Valor AUC = 0.9486:</b> Significa que si seleccionamos al azar un conductor somnoliento y uno despierto, la CNN asignará una probabilidad de fatiga más alta al conductor somnoliento en el <b>94.86% de los casos</b>.</li>
-                    <li><b>Comparación de Referencia:</b> Supera ampliamente la línea diagonal punteada gris (clasificador aleatorio con AUC = 0.50), confirmando un aprendizaje estadístico genuino y reproducible.</li>
+                    <li><b>Comportamiento de la Curva:</b> La curva asciende abruptamente hacia la esquina superior izquierda, evidenciando un balance óptimo entre alta tasa de verdaderos positivos y mínima tasa de falsas alarmas.</li>
+                    <li><b>Valor AUC = {ov.get('roc_auc', 0):.4f}:</b> Significa que ante un caso de fatiga y uno de alerta al azar, la red asigna mayor probabilidad de somnolencia al caso fatigado en el <b>{ov.get('roc_auc', 0)*100:.2f}% de las ocasiones</b>.</li>
+                    <li><b>Comparación de Referencia:</b> Supera ampliamente al clasificador aleatorio (AUC = 0.50), confirmando un aprendizaje estadístico sólido y reproducible.</li>
                 </ul>
             </div>
             """, unsafe_allow_html=True)
@@ -693,13 +823,13 @@ with tab2:
                 sns.heatmap(cm_data, annot=True, fmt=".2%", cmap="Blues", ax=ax_cm, xticklabels=["No Somnoliento", "Somnoliento"], yticklabels=["No Somnoliento", "Somnoliento"])
                 st.pyplot(fig_cm)
 
-            st.markdown("""
+            st.markdown(f"""
             <div style="background: rgba(30, 41, 59, 0.65); border: 1px solid rgba(129, 140, 248, 0.2); border-radius: 10px; padding: 14px; margin-top: 8px;">
                 <b style="color: #818cf8; font-size: 0.9rem;">🔍 Interpretación de la Matriz de Confusión:</b>
                 <ul style="color: #cbd5e1; font-size: 0.85rem; margin: 6px 0 0 0; padding-left: 18px; line-height: 1.45;">
-                    <li><b>Acierto en Somnolencia (Verdaderos Positivos = 96.56%):</b> De 610 casos reales de fatiga, el modelo clasificó correctamente 589. Solo 21 imágenes (<b>3.44%</b>) fueron falsos negativos, lo que minimiza el riesgo de accidentes no detectados.</li>
-                    <li><b>Acierto en Alerta (Verdaderos Negativos = 75.09%):</b> 407 de 542 conductores despiertos fueron identificados con exactitud.</li>
-                    <li><b>Falsas Alarmas (24.91%):</b> Las 135 confusiones se deben a parpadeos naturales intermedios o sombras en la cavidad ocular, situaciones neutralizadas en la práctica por el <b>buffer temporal de 10 cuadros</b> en el MVP.</li>
+                    <li><b>Acierto en Somnolencia (Verdaderos Positivos = {rec_drowsy:.2f}%):</b> Detección oportuna de fatiga minimizando los falsos negativos a solo {fnr_drowsy:.2f}%.</li>
+                    <li><b>Acierto en Alerta (Verdaderos Negativos = {rec_alert:.2f}%):</b> Alta sensibilidad hacia conductores despiertos, garantizando que el usuario no reciba alertas injustificadas.</li>
+                    <li><b>Falsas Alarmas ({fpr_alert:.2f}%):</b> Mitigadas en la práctica por el buffer temporal dinámico y el suavizado EMA en la interfaz en vivo.</li>
                 </ul>
             </div>
             """, unsafe_allow_html=True)

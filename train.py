@@ -44,9 +44,13 @@ if sys.platform == "win32":
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
+# pyrefly: ignore[missing-import]
 import numpy as np
+# pyrefly: ignore[missing-import]
 import matplotlib
-matplotlib.use("Agg")  # Backend sin interfaz gráfica para generación de figuras
+matplotlib.use("Agg")  
+# Backend sin interfaz gráfica para generación de figuras
+# pyrefly: ignore[missing-import]
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import (
@@ -138,12 +142,15 @@ def build_cnn_architecture(input_shape=(64, 64, 3)):
     return model
 
 
-def load_datasets(data_dir, img_size=(64, 64), batch_size=64, max_samples=None, seed=42):
+def load_datasets(data_dir, img_size=(64, 64), batch_size=64, max_samples=None, seed=42, use_augmentation=True):
     """
     Carga el dataset DDD y realiza la partición en Train (70%), Validación (15%) y Prueba (15%).
     Mapeo de clases:
         0 -> 'Non Drowsy' (Alerta / Despierto)
         1 -> 'Drowsy'     (Somnoliento)
+    
+    Incluye Data Augmentation en el pipeline de entrenamiento para dotar al modelo de
+    invarianza ante variaciones de iluminación, ángulos y características faciales reales.
     """
     print(f"\n[+] Cargando imágenes desde: {data_dir}")
     class_names = ["Non Drowsy", "Drowsy"]
@@ -190,6 +197,24 @@ def load_datasets(data_dir, img_size=(64, 64), batch_size=64, max_samples=None, 
         test_ds = test_ds.take(test_b)
         print(f"[i] Muestreo activo: {train_b} batches train, {val_b} batches val, {test_b} batches test.")
 
+    # Data Augmentation en conjunto de entrenamiento
+    if use_augmentation:
+        print("[+] Aplicando Data Augmentation (Flip, Rotación, Brillo, Contraste, Traslación)...")
+        data_augmentation = keras.Sequential(
+            [
+                layers.RandomFlip("horizontal"),
+                layers.RandomRotation(0.05),
+                layers.RandomBrightness(0.12),
+                layers.RandomContrast(0.12),
+                layers.RandomTranslation(0.04, 0.04),
+            ],
+            name="data_augmentation_pipeline"
+        )
+        train_ds = train_ds.map(
+            lambda x, y: (data_augmentation(x, training=True), y),
+            num_parallel_calls=tf.data.AUTOTUNE
+        )
+
     # Optimización de pipeline de I/O mediante prefetching
     train_ds = train_ds.prefetch(buffer_size=tf.data.AUTOTUNE)
     val_ds = val_ds.prefetch(buffer_size=tf.data.AUTOTUNE)
@@ -199,13 +224,16 @@ def load_datasets(data_dir, img_size=(64, 64), batch_size=64, max_samples=None, 
     return train_ds, val_ds, test_ds, class_names
 
 
-def train_model(model, train_ds, val_ds, epochs=10, learning_rate=0.001, model_path="model_ddd.keras"):
+def train_model(model, train_ds, val_ds, epochs=10, learning_rate=0.001, model_path="model_ddd.keras", class_weight=None):
     """
     Compila y entrena el modelo CNN utilizando optimizador Adam y pérdida de entropía cruzada binaria.
+    Permite ponderación de clases (class_weight) para penalizar falsos positivos y priorizar sensibilidad a Non Drowsy.
     """
     print("\n" + "=" * 60)
     print("           INICIO DE ENTRENAMIENTO DE LA CNN")
     print("=" * 60)
+    if class_weight:
+        print(f"[i] Ponderación de clases activa: {class_weight}")
     
     optimizer = keras.optimizers.Adam(learning_rate=learning_rate)
     model.compile(
@@ -243,6 +271,7 @@ def train_model(model, train_ds, val_ds, epochs=10, learning_rate=0.001, model_p
         validation_data=val_ds,
         epochs=epochs,
         callbacks=callbacks,
+        class_weight=class_weight,
         verbose=1
     )
     elapsed = time.time() - start_time
@@ -285,9 +314,22 @@ def evaluate_and_generate_metrics(model, test_ds, history, class_names, elapsed_
     test_rec = float(recall_score(y_true, y_pred_binary, zero_division=0))
     test_f1 = float(f1_score(y_true, y_pred_binary, zero_division=0))
 
-    # 2. Curva ROC y cálculo de AUC
+    # 2. Curva ROC y cálculo de AUC + Umbral Óptimo (Youden's J Statistic)
     fpr, tpr, thresholds = roc_curve(y_true, y_pred_probs)
     roc_auc = float(auc(fpr, tpr))
+    
+    # Cálculo del punto de corte óptimo que equilibra sensibilidad y especificidad
+    j_scores = tpr - fpr
+    best_idx = int(np.argmax(j_scores))
+    optimal_threshold = float(thresholds[best_idx])
+    # Limitar el umbral óptimo a un rango razonable [0.45, 0.85]
+    optimal_threshold = max(0.45, min(0.85, optimal_threshold))
+    
+    y_pred_opt = (y_pred_probs >= optimal_threshold).astype(int)
+    opt_acc = float(accuracy_score(y_true, y_pred_opt))
+    opt_prec = float(precision_score(y_true, y_pred_opt, zero_division=0))
+    opt_rec = float(recall_score(y_true, y_pred_opt, zero_division=0))
+    opt_f1 = float(f1_score(y_true, y_pred_opt, zero_division=0))
 
     # 3. Matriz de Confusión
     cm_raw = confusion_matrix(y_true, y_pred_binary)
@@ -405,7 +447,15 @@ def evaluate_and_generate_metrics(model, test_ds, history, class_names, elapsed_
             "precision": round(test_prec, 4),
             "recall": round(test_rec, 4),
             "f1_score": round(test_f1, 4),
-            "roc_auc": round(roc_auc, 4)
+            "roc_auc": round(roc_auc, 4),
+            "default_threshold": 0.50,
+            "optimal_threshold": round(optimal_threshold, 4),
+            "optimal_metrics": {
+                "accuracy": round(opt_acc, 4),
+                "precision": round(opt_prec, 4),
+                "recall": round(opt_rec, 4),
+                "f1_score": round(opt_f1, 4)
+            }
         },
         "confusion_matrix": {
             "classes": class_names,
@@ -482,6 +532,17 @@ def main():
         help="Tasa de aprendizaje del optimizador Adam"
     )
     parser.add_argument(
+        "--non_drowsy_weight",
+        type=float,
+        default=1.35,
+        help="Ponderación de pérdida para la clase 0 (Non Drowsy) para penalizar falsos positivos de somnolencia"
+    )
+    parser.add_argument(
+        "--no_augmentation",
+        action="store_true",
+        help="Desactiva Data Augmentation en entrenamiento"
+    )
+    parser.add_argument(
         "--model_path",
         type=str,
         default="model_ddd.keras",
@@ -497,17 +558,21 @@ def main():
     args = parser.parse_args()
     set_seed(42)
 
-    # 1. Cargar y particionar datasets
+    # 1. Cargar y particionar datasets con Data Augmentation
     train_ds, val_ds, test_ds, class_names = load_datasets(
         data_dir=args.data_dir,
         img_size=(args.img_size, args.img_size),
         batch_size=args.batch_size,
         max_samples=args.max_samples,
-        seed=42
+        seed=42,
+        use_augmentation=not args.no_augmentation
     )
 
     # 2. Construir arquitectura de la red (3 Ciclos Convolucionales)
     model = build_cnn_architecture(input_shape=(args.img_size, args.img_size, 3))
+
+    # Ponderación de clases para priorizar sensibilidad hacia Non Drowsy y mitigar falsas alarmas
+    class_weight = {0: float(args.non_drowsy_weight), 1: 1.0}
 
     # 3. Entrenar red neuronal
     history, elapsed_time = train_model(
@@ -516,7 +581,8 @@ def main():
         val_ds=val_ds,
         epochs=args.epochs,
         learning_rate=args.learning_rate,
-        model_path=args.model_path
+        model_path=args.model_path,
+        class_weight=class_weight
     )
 
     # Asegurar que se guarde el modelo final en formato Keras
