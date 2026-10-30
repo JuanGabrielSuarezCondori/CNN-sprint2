@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GuardDrive AI - Infografía Técnica y Arquitectura</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              900: '#1e3a8a'
+            }
+          },
+          boxShadow: {
+            'subtle': '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03)',
+            'card': '0 10px 25px -5px rgba(15, 23, 42, 0.06), 0 8px 10px -6px rgba(15, 23, 42, 0.04)',
+            'card-hover': '0 20px 30px -10px rgba(37, 99, 235, 0.12), 0 10px 10px -5px rgba(15, 23, 42, 0.04)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #f8fafc;
+      color: #1e293b;
+      font-family: 'Inter', sans-serif;
+    }
+    .card-clean {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      transition: all 0.25s ease-in-out;
+    }
+    .card-clean:hover {
+      border-color: #93c5fd;
+      transform: translateY(-2px);
+    }
+    @keyframes pulse-gentle {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.02); opacity: 0.92; }
+    }
+    .pulse-danger {
+      animation: pulse-gentle 2.6s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-blue-600 selection:text-white">
+
+  <!-- ================= NAVBAR SUPERIOR EN MODO CLARO ================= -->
+  <header class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 py-3 shadow-sm">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/25">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.3" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+          </svg>
+        </div>
+        <div>
+          <span class="text-[11px] uppercase tracking-widest text-blue-600 font-bold font-mono">Infografía Técnica &amp; Dashboard</span>
+          <h1 class="text-lg font-extrabold text-slate-900 leading-none">GuardDrive AI</h1>
+        </div>
+      </div>
+      
+      <nav class="hidden md:flex items-center gap-1 text-xs font-semibold text-slate-600 bg-slate-100 p-1.5 rounded-xl border border-slate-200">
+        <a href="#vial" class="px-3 py-1.5 rounded-lg hover:text-blue-600 hover:bg-white transition">Seguridad Vial</a>
+        <a href="#dataset" class="px-3 py-1.5 rounded-lg hover:text-blue-600 hover:bg-white transition">Dataset DDD</a>
+        <a href="#arquitectura" class="px-3 py-1.5 rounded-lg hover:text-blue-600 hover:bg-white transition">CNN 3 Ciclos</a>
+        <a href="#pipeline" class="px-3 py-1.5 rounded-lg hover:text-blue-600 hover:bg-white transition">Flujo en Vivo</a>
+        <a href="#comparativa" class="px-3 py-1.5 rounded-lg text-blue-700 bg-blue-100/70 border border-blue-200">Nuevo Modelo vs Anterior</a>
+        <a href="#glosario" class="px-3 py-1.5 rounded-lg hover:text-blue-600 hover:bg-white transition">Glosario</a>
+      </nav>
+
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-300">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          Streamlit MVP Validado
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-8 space-y-14">
+
+    <!-- ================= HERO & IMPACTO VIAL ================= -->
+    <section id="vial" class="relative overflow-hidden rounded-3xl bg-white border border-slate-200 p-6 md:p-10 shadow-card">
+      <div class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-blue-100/60 via-indigo-50/40 to-transparent rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="relative z-10 flex flex-col lg:flex-row items-start justify-between gap-8">
+        <div class="space-y-4 max-w-3xl">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-blue-50 text-blue-700 text-xs font-mono font-semibold border border-blue-200">
+            <svg class="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/>
+            </svg>
+            Visión Artificial • Deep Learning • Sistemas DMS / ADAS
+          </div>
+
+          <h2 class="text-3xl md:text-5xl font-black tracking-tight text-slate-900 leading-tight">
+            GuardDrive AI: Detección de Somnolencia Vehicular en Tiempo Real
+          </h2>
+
+          <p class="text-slate-600 text-base md:text-lg leading-relaxed font-normal">
+            Sistema integral no intrusivo en Python para el monitoreo de fatiga en cabina. Mediante una Red Neuronal Convolucional compacta (<strong class="text-blue-600 font-semibold">36,737 parámetros</strong>, solo <strong class="text-slate-900 font-semibold">~143.5 KB</strong>), analiza micro-expresiones palpebrales e interrumpe microsueños con alertas visuales y sonoras en menos de <strong class="text-emerald-600 font-semibold">15 ms por fotograma</strong>.
+          </p>
+
+          <div class="flex flex-wrap gap-3 text-xs font-mono pt-1 text-slate-600">
+            <span class="flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+              <span class="w-2 h-2 rounded-full bg-blue-500"></span> Python 3.13 / TensorFlow 2.21
+            </span>
+            <span class="flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+              <span class="w-2 h-2 rounded-full bg-purple-500"></span> Keras 3.15 Functional API
+            </span>
+            <span class="flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span> OpenCV + Streamlit HUD en Vivo
+            </span>
+          </div>
+        </div>
+
+        <!-- Tarjeta de Alerta de Microsueño (Contraste Suave) -->
+        <div class="w-full lg:w-96 rounded-2xl bg-gradient-to-br from-rose-50 to-orange-50/50 border border-rose-200 p-5 shadow-card pulse-danger">
+          <div class="flex items-center justify-between pb-3 border-b border-rose-200">
+            <span class="text-xs font-bold text-rose-700 uppercase tracking-wider flex items-center gap-2">
+              <svg class="w-4 h-4 text-rose-600 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+              </svg>
+              Riesgo Crítico Vial
+            </span>
+            <span class="text-[11px] bg-rose-200/80 text-rose-800 px-2 py-0.5 rounded font-mono font-bold">OMS / NHTSA</span>
+          </div>
+
+          <div class="space-y-3 mt-4">
+            <div class="flex items-baseline justify-between">
+              <span class="text-3xl font-black text-rose-700 font-mono tracking-tight">10% - 21%</span>
+              <span class="text-xs text-rose-900/80 text-right font-medium">De accidentes fatales</span>
+            </div>
+            <p class="text-xs text-slate-700 leading-snug">
+              Son originados por hipovigilancia silenciosa sin presencia de sustancias o alcohol.
+            </p>
+
+            <div class="p-3.5 bg-white/90 rounded-xl border border-rose-200 shadow-sm space-y-1">
+              <div class="text-xs font-bold text-rose-800 flex items-center justify-between">
+                <span>Microsueño Crítico (3 seg)</span>
+                <span class="text-rose-600 font-mono text-xs">100 km/h</span>
+              </div>
+              <div class="text-2xl font-black text-slate-900 font-mono">
+                &gt; 83.4 metros a ciegas
+              </div>
+              <p class="text-[11px] text-slate-600 leading-tight">
+                El vehículo recorre <strong class="text-rose-700">27.8 metros/segundo</strong> sin control de volante ni frenos, transformándose en un proyectil desgobernado.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= NUEVA SECCIÓN DESTACADA: COMPARATIVA MODELO OPTIMIZADO ================= -->
+    <section id="comparativa" class="space-y-6">
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-3 border-b border-slate-200 pb-4">
+        <div>
+          <span class="text-xs font-bold font-mono uppercase text-blue-600 tracking-wider">Saltos de Rendimiento y Seguridad</span>
+          <h3 class="text-2xl md:text-3xl font-extrabold text-slate-900">Modelo Anterior vs. Nuevo Modelo Optimizado</h3>
+        </div>
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-300">
+          <svg class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+          </svg>
+          Nueva Versión en Producción
+        </div>
+      </div>
+
+      <!-- Tabla Comparativa Moderna en Modo Claro -->
+      <div class="card-clean rounded-2xl overflow-hidden shadow-card border border-slate-200">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm border-collapse">
+            <thead>
+              <tr class="bg-slate-100/90 border-b border-slate-200 text-xs font-mono uppercase text-slate-700">
+                <th class="py-4 px-6 font-bold">Métrica</th>
+                <th class="py-4 px-6 font-bold text-slate-600 text-center">Modelo Anterior</th>
+                <th class="py-4 px-6 font-bold text-blue-700 text-center bg-blue-50/70 border-x border-blue-200">Nuevo Modelo Optimizado</th>
+                <th class="py-4 px-6 font-bold text-slate-700">Impacto Práctico en Conducción</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200/80">
+              
+              <!-- Fila 1 -->
+              <tr class="hover:bg-slate-50 transition">
+                <td class="py-4 px-6 font-semibold text-slate-900">
+                  Acierto en Despierto <span class="text-xs text-slate-500 font-normal block font-mono">(Non Drowsy Recall)</span>
+                </td>
+                <td class="py-4 px-6 font-mono text-center text-slate-600 font-medium">75.09%</td>
+                <td class="py-4 px-6 font-mono text-center font-bold text-blue-700 bg-blue-50/40 border-x border-blue-200 text-base">
+                  91.19%
+                </td>
+                <td class="py-4 px-6">
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-100 text-emerald-800">
+                    ▲ +16.10%
+                  </span>
+                  <span class="text-xs text-slate-600 block mt-1">Detecta correctamente a personas despiertas sin etiquetarlas como dormidas.</span>
+                </td>
+              </tr>
+
+              <!-- Fila 2 -->
+              <tr class="hover:bg-slate-50 transition">
+                <td class="py-4 px-6 font-semibold text-slate-900">
+                  Tasa de Falsas Alarmas <span class="text-xs text-slate-500 font-normal block font-mono">(False Positive Rate - FPR)</span>
+                </td>
+                <td class="py-4 px-6 font-mono text-center text-rose-600 font-medium">24.91%</td>
+                <td class="py-4 px-6 font-mono text-center font-bold text-emerald-700 bg-blue-50/40 border-x border-blue-200 text-base">
+                  8.81%
+                </td>
+                <td class="py-4 px-6">
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-100 text-emerald-800">
+                    ▼ Reducción de ~2/3
+                  </span>
+                  <span class="text-xs text-slate-600 block mt-1">Caen drásticamente las falsas alertas provocadas por sombras oculares o parpadeos.</span>
+                </td>
+              </tr>
+
+              <!-- Fila 3 -->
+              <tr class="hover:bg-slate-50 transition">
+                <td class="py-4 px-6 font-semibold text-slate-900">
+                  Exactitud Global <span class="text-xs text-slate-500 font-normal block font-mono">(Accuracy General)</span>
+                </td>
+                <td class="py-4 px-6 font-mono text-center text-slate-600 font-medium">86.46%</td>
+                <td class="py-4 px-6 font-mono text-center font-bold text-blue-700 bg-blue-50/40 border-x border-blue-200 text-base">
+                  91.34%
+                </td>
+                <td class="py-4 px-6">
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-blue-100 text-blue-800">
+                    ▲ +4.88%
+                  </span>
+                  <span class="text-xs text-slate-600 block mt-1">Aumento sustancial en la fidelidad predictiva global en el conjunto de prueba.</span>
+                </td>
+              </tr>
+
+              <!-- Fila 4 -->
+              <tr class="hover:bg-slate-50 transition">
+                <td class="py-4 px-6 font-semibold text-slate-900">
+                  Área bajo la Curva ROC <span class="text-xs text-slate-500 font-normal block font-mono">(AUC-ROC)</span>
+                </td>
+                <td class="py-4 px-6 font-mono text-center text-slate-600 font-medium">0.9486</td>
+                <td class="py-4 px-6 font-mono text-center font-bold text-purple-700 bg-blue-50/40 border-x border-blue-200 text-base">
+                  0.9751
+                </td>
+                <td class="py-4 px-6">
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-purple-100 text-purple-800">
+                    Separación casi perfecta
+                  </span>
+                  <span class="text-xs text-slate-600 block mt-1">Capacidad discriminativa superior sin solapamiento probabilístico entre estados.</span>
+                </td>
+              </tr>
+
+              <!-- Fila 5 -->
+              <tr class="hover:bg-slate-50 transition">
+                <td class="py-4 px-6 font-semibold text-slate-900">
+                  P(Fatiga) en Muestras Despiertas <span class="text-xs text-slate-500 font-normal block font-mono">(Ruido de Inferencia)</span>
+                </td>
+                <td class="py-4 px-6 font-mono text-center text-slate-600 font-medium">4.0% – 9.0%</td>
+                <td class="py-4 px-6 font-mono text-center font-bold text-emerald-700 bg-blue-50/40 border-x border-blue-200 text-base">
+                  &lt; 0.90%
+                </td>
+                <td class="py-4 px-6">
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-100 text-emerald-800">
+                    Desciende a casi cero
+                  </span>
+                  <span class="text-xs text-slate-600 block mt-1">El ruido residual desaparece; el modelo no duda cuando el conductor está despierto.</span>
+                </td>
+              </tr>
+
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ¿Cómo se logró esta optimización? (Causas de la Mejora) -->
+      <div class="card-clean rounded-2xl p-6 border border-slate-200 bg-gradient-to-r from-blue-50/40 via-white to-slate-50">
+        <h4 class="text-sm font-bold text-slate-900 uppercase font-mono tracking-wider flex items-center gap-2 mb-4">
+          <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+          </svg>
+          Las 4 Claves de Ingeniería que Hicieron Posible esta Optimización
+        </h4>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-blue-700 font-mono">1. Ponderación de Coste</span>
+              <span class="text-[10px] bg-blue-100 text-blue-800 font-mono px-1.5 py-0.5 rounded font-bold">1.35x</span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Uso de <code class="font-mono text-slate-800 text-[11px] bg-slate-100 px-1 py-0.5 rounded">class_weight={0: 1.35, 1: 1.0}</code>. Castiga fuertemente las falsas alarmas durante el backpropagation, forzando al modelo a aprender patrones certeros de vigilia.
+            </p>
+          </div>
+
+          <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-purple-700 font-mono">2. Data Augmentation</span>
+              <span class="text-[10px] bg-purple-100 text-purple-800 font-mono px-1.5 py-0.5 rounded font-bold">Invarianza</span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Inclusión de variaciones aleatorias de brillo, contraste, sombras y ligeras rotaciones. Inmuniza a la red frente a cambios de iluminación dentro de la cabina o túneles.
+            </p>
+          </div>
+
+          <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-emerald-700 font-mono">3. Enfoque Facial ROI 1:1</span>
+              <span class="text-[10px] bg-emerald-100 text-emerald-800 font-mono px-1.5 py-0.5 rounded font-bold">227x227</span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Recorte adaptativo centrado en el rostro. Remueve paredes, ventanillas y el techo del auto, igualando la escala geométrica con la que fue entrenado el dataset DDD.
+            </p>
+          </div>
+
+          <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-amber-700 font-mono">4. Suavizado EMA</span>
+              <span class="text-[10px] bg-amber-100 text-amber-800 font-mono px-1.5 py-0.5 rounded font-bold">Temporal</span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Media Móvil Exponencial entre cuadros adyacentes junto a un vaciado rápido del buffer ($-2$ frames). Absorbe parpadeos involuntarios y apaga la alarma inmediatamente.
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= DATASET DDD Y PREPROCESAMIENTO ================= -->
+    <section id="dataset" class="space-y-6">
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-3 border-b border-slate-200 pb-4">
+        <div>
+          <span class="text-xs font-bold font-mono uppercase text-blue-600 tracking-wider">Ingeniería de Datos</span>
+          <h3 class="text-2xl md:text-3xl font-extrabold text-slate-900">Driver Drowsiness Dataset (DDD) & Preprocesado</h3>
+        </div>
+        <p class="text-xs text-slate-500 max-w-sm">
+          Partición estratificada determinista y reducción dimensional de memoria.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <!-- Distribución de Clases -->
+        <div class="card-clean rounded-2xl p-6 border border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-sm font-bold text-slate-800 uppercase tracking-wider font-mono">Volumen & Balance</h4>
+              <span class="text-xs bg-slate-100 text-slate-700 font-mono font-bold px-2 py-0.5 rounded">41,793 Imgs</span>
+            </div>
+
+            <div class="space-y-4 my-2">
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-rose-600 font-bold flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Clase 1: Drowsy (Somnoliento)
+                  </span>
+                  <span class="font-mono text-slate-800 font-bold">22,348 (53.47%)</span>
+                </div>
+                <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200">
+                  <div class="bg-gradient-to-r from-rose-500 to-amber-500 h-full rounded-full" style="width: 53.47%"></div>
+                </div>
+                <p class="text-[11px] text-slate-500 mt-1">Ojos cerrados, relajación mandibular y fatiga severa.</p>
+              </div>
+
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-blue-600 font-bold flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Clase 0: Non-Drowsy (Alerta)
+                  </span>
+                  <span class="font-mono text-slate-800 font-bold">19,445 (46.53%)</span>
+                </div>
+                <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200">
+                  <div class="bg-gradient-to-r from-blue-500 to-indigo-500 h-full rounded-full" style="width: 46.53%"></div>
+                </div>
+                <p class="text-[11px] text-slate-500 mt-1">Conductor en vigilia normal, ojos atentos al camino.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <span>Resolución de Origen:</span>
+            <span class="font-mono text-slate-800 font-bold">227 × 227 × 3 RGB</span>
+          </div>
+        </div>
+
+        <!-- Reducción 92% -->
+        <div class="card-clean rounded-2xl p-6 border border-blue-200 bg-gradient-to-br from-white to-blue-50/30 flex flex-col justify-between shadow-subtle">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-sm font-bold text-blue-900 uppercase tracking-wider font-mono">Redimensionamiento</h4>
+              <span class="text-xs bg-blue-100 text-blue-800 font-mono font-bold px-2 py-0.5 rounded">-92% Datos</span>
+            </div>
+
+            <p class="text-xs text-slate-600 leading-relaxed mb-4">
+              Downsampling bilineal a $64\times 64\times 3$. Preserva nítidamente el pliegue palpebral mientras aligera drásticamente el cómputo matricial:
+            </p>
+
+            <div class="grid grid-cols-2 gap-3 text-center my-3">
+              <div class="p-3 bg-white rounded-xl border border-slate-200 shadow-sm">
+                <span class="text-[10px] text-slate-500 block uppercase font-mono font-bold">Nativo DDD</span>
+                <span class="text-sm font-mono font-bold text-slate-800">227 × 227</span>
+                <span class="text-[11px] text-slate-500 block font-mono">154,587 valores</span>
+              </div>
+              <div class="p-3 bg-blue-50 rounded-xl border border-blue-200 shadow-sm">
+                <span class="text-[10px] text-blue-700 block uppercase font-mono font-bold">Downsample</span>
+                <span class="text-sm font-mono font-bold text-blue-800">64 × 64</span>
+                <span class="text-[11px] text-blue-600 block font-mono">12,288 valores</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="text-[11px] text-slate-600 bg-white p-2.5 rounded-lg border border-slate-200 mt-2">
+            <strong class="text-slate-900">Beneficio:</strong> Reduce los MACs de entrada, permitiendo <strong class="text-emerald-700 font-mono">&gt;60 FPS</strong> potenciales en microprocesadores portátiles.
+          </div>
+        </div>
+
+        <!-- Esquema de Partición -->
+        <div class="card-clean rounded-2xl p-6 border border-slate-200 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-sm font-bold text-slate-800 uppercase tracking-wider font-mono">Partición & tf.data</h4>
+              <span class="text-xs bg-slate-100 text-slate-700 font-mono font-bold px-2 py-0.5 rounded">seed=42</span>
+            </div>
+
+            <div class="space-y-2.5 text-xs">
+              <div class="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                <span class="font-medium text-slate-700">Train (70%)</span>
+                <span class="font-mono text-blue-700 font-bold">29,255 imágenes</span>
+              </div>
+              <div class="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                <span class="font-medium text-slate-700">Validación (15%)</span>
+                <span class="font-mono text-purple-700 font-bold">6,269 imágenes</span>
+              </div>
+              <div class="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                <span class="font-medium text-slate-700">Test Ciego (15%)</span>
+                <span class="font-mono text-emerald-700 font-bold">6,269 (1,152 eval)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-slate-100 space-y-1 text-xs text-slate-500">
+            <div>• <strong>Rescaling:</strong> Normalización determinista a $[0.0, 1.0]$.</div>
+            <div>• <strong>Prefetch:</strong> Solapamiento CPU de mini-lotes ($B=64$).</div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ================= ARQUITECTURA DE LA CNN (3 CICLOS) ================= -->
+    <section id="arquitectura" class="space-y-6">
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-3 border-b border-slate-200 pb-4">
+        <div>
+          <span class="text-xs font-bold font-mono uppercase text-blue-600 tracking-wider">Topología Convolucional Modular</span>
+          <h3 class="text-2xl md:text-3xl font-extrabold text-slate-900">Arquitectura CNN: 3 Ciclos y 10 Capas Ocultas</h3>
+        </div>
+        <div class="text-xs font-mono text-slate-600 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3">
+          <span>Total Capas: <strong class="text-blue-700">10 intermedias</strong></span>
+          <span>•</span>
+          <span>Pesos Entrenables: <strong class="text-emerald-700">36,673</strong></span>
+          <span>•</span>
+          <span>Tamaño: <strong class="text-slate-900">~143.5 KB</strong></span>
+        </div>
+      </div>
+
+      <!-- Diagrama Modular de Capas -->
+      <div class="card-clean rounded-3xl p-6 md:p-8 border border-slate-200 space-y-8">
+        
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+          
+          <!-- Bloque 0: Entrada -->
+          <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200 flex flex-col justify-between">
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-mono uppercase font-bold text-slate-500">Fase 1: Input</span>
+                <span class="text-[10px] bg-slate-200 text-slate-700 font-mono px-1.5 py-0.5 rounded">0 params</span>
+              </div>
+              <h5 class="text-sm font-bold text-slate-900">Input &amp; Rescaling</h5>
+              <div class="p-2.5 bg-white rounded-lg font-mono text-xs text-blue-700 border border-slate-200 space-y-0.5">
+                <div>Tensor: (64, 64, 3)</div>
+                <div class="text-[11px] text-slate-500">Escala 1./255</div>
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-600 mt-3 pt-2 border-t border-slate-200">
+              Conversión al espacio continuo $[0.0, 1.0]$. Normaliza la superficie de error para el descenso del gradiente.
+            </p>
+          </div>
+
+          <!-- Ciclo 1: Conv1 + BN -->
+          <div class="bg-blue-50/50 rounded-2xl p-4 border border-blue-200 flex flex-col justify-between">
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-mono uppercase font-bold text-blue-700">Ciclo 1: Temp-Conv</span>
+                <span class="text-[10px] bg-blue-100 text-blue-800 font-mono font-bold px-1.5 py-0.5 rounded">1,024 params</span>
+              </div>
+              <h5 class="text-sm font-bold text-slate-900">Conv2D (32) + BN</h5>
+              <div class="p-2.5 bg-white rounded-lg font-mono text-xs text-blue-800 border border-blue-100 space-y-0.5">
+                <div>Kernel 3×3 | ReLU</div>
+                <div>Salida: (64, 64, 32)</div>
+                <div class="text-[11px] text-indigo-600 font-semibold">+ BatchNormalization</div>
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-600 mt-3 pt-2 border-t border-blue-100">
+              Captura gradientes locales y micro-bordes del iris. Batch Normalization estabiliza la varianza del lote.
+            </p>
+          </div>
+
+          <!-- Ciclo 2: Spatial Conv + Pool + Drop -->
+          <div class="bg-indigo-50/40 rounded-2xl p-4 border border-indigo-200 flex flex-col justify-between">
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-mono uppercase font-bold text-indigo-700">Ciclo 2: Espacial</span>
+                <span class="text-[10px] bg-indigo-100 text-indigo-800 font-mono font-bold px-1.5 py-0.5 rounded">18,496 params</span>
+              </div>
+              <h5 class="text-sm font-bold text-slate-900">Conv2D (64) + Pool</h5>
+              <div class="p-2.5 bg-white rounded-lg font-mono text-xs text-indigo-800 border border-indigo-100 space-y-0.5">
+                <div>Kernel 3×3 | ReLU</div>
+                <div>MaxPool 2×2 (stride 2)</div>
+                <div class="text-[11px] text-slate-500">Salida: (32, 32, 64)</div>
+                <div class="text-[11px] text-purple-600 font-semibold">Dropout (0.30)</div>
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-600 mt-3 pt-2 border-t border-indigo-100">
+              Sintetiza la apertura palpebral completa. MaxPooling descarta el 75% de posiciones redundantes.
+            </p>
+          </div>
+
+          <!-- Ciclo 3: SeparableConv + GAP -->
+          <div class="bg-purple-50/40 rounded-2xl p-4 border border-purple-200 flex flex-col justify-between">
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-mono uppercase font-bold text-purple-700">Ciclo 3: Separable</span>
+                <span class="text-[10px] bg-purple-100 text-purple-800 font-mono font-bold px-1.5 py-0.5 rounded">8,896 params</span>
+              </div>
+              <h5 class="text-sm font-bold text-slate-900">SeparableConv (128)</h5>
+              <div class="p-2.5 bg-white rounded-lg font-mono text-xs text-purple-800 border border-purple-100 space-y-0.5">
+                <div>Depthwise + Pointwise</div>
+                <div class="text-[11px] text-emerald-700 font-bold">-88% Operaciones</div>
+                <div>GlobalAvgPool2D</div>
+                <div class="text-[11px] text-slate-500">Vector: 128D</div>
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-600 mt-3 pt-2 border-t border-purple-100">
+              Fusión global eficiente sin explosión de conexiones. Sustituye al Flatten tradicional con cero pesos extra.
+            </p>
+          </div>
+
+          <!-- Salida: Clasificador MLP -->
+          <div class="bg-emerald-50/40 rounded-2xl p-4 border border-emerald-200 flex flex-col justify-between">
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-mono uppercase font-bold text-emerald-700">Fase 6: MLP</span>
+                <span class="text-[10px] bg-emerald-100 text-emerald-800 font-mono font-bold px-1.5 py-0.5 rounded">8,321 params</span>
+              </div>
+              <h5 class="text-sm font-bold text-slate-900">Clasificador Denso</h5>
+              <div class="p-2.5 bg-white rounded-lg font-mono text-xs text-emerald-800 border border-emerald-100 space-y-0.5">
+                <div>Dense(64, ReLU)</div>
+                <div>Dropout (0.40)</div>
+                <div class="font-bold text-slate-900">Dense(1, Sigmoid)</div>
+                <div class="text-[11px] text-blue-700 font-semibold">$P(\text{Fatiga}) \in [0, 1]$</div>
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-600 mt-3 pt-2 border-t border-emerald-100">
+              Mapea los 128 descriptores hacia una probabilidad continua calibrada para el umbral de disparo.
+            </p>
+          </div>
+
+        </div>
+
+        <!-- Interpretaciones de Diseño -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-200 text-xs text-slate-600">
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <strong class="text-slate-900 font-bold block mb-1 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+              Interpretación de SeparableConv2D:
+            </strong>
+            Al desacoplar el filtrado espacial (kernel $3\times 3$ canal por canal) de la mezcla de profundidad ($1\times 1$), los cálculos descienden de <span class="font-mono text-slate-800 font-semibold">75.5M FLOPs</span> a solo <span class="font-mono text-emerald-700 font-semibold">8.9M FLOPs</span> (ahorro del <strong>88.1%</strong>). Permite inferencias continuas sin calentar el procesador del vehículo.
+          </div>
+
+          <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <strong class="text-slate-900 font-bold block mb-1 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-purple-600"></span>
+              Interpretación de GlobalAveragePooling2D:
+            </strong>
+            En vez de desplegar una capa <code class="font-mono bg-white px-1 py-0.5 rounded border border-slate-200 text-slate-800">Flatten</code> que generaría 131,072 pesos y alto riesgo de memorización (overfitting), el promedio global colapsa la matriz en 128 valores sin un solo parámetro extra.
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ================= FLUJO EN TIEMPO REAL & PIPELINE ================= -->
+    <section id="pipeline" class="space-y-6">
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-3 border-b border-slate-200 pb-4">
+        <div>
+          <span class="text-xs font-bold font-mono uppercase text-blue-600 tracking-wider">Flujo de Inferencia en Cabina</span>
+          <h3 class="text-2xl md:text-3xl font-extrabold text-slate-900">Pipeline en Vivo y Alerta Acústica Asíncrona</h3>
+        </div>
+        <p class="text-xs text-slate-500 max-w-sm">
+          Integración no bloqueante con OpenCV y visualización Streamlit.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        
+        <div class="card-clean rounded-2xl p-5 border border-slate-200 relative">
+          <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 font-mono font-bold flex items-center justify-center text-sm mb-3">
+            01
+          </div>
+          <h4 class="text-sm font-bold text-slate-900 mb-1">Cámara &amp; ROI Facial</h4>
+          <p class="text-xs text-slate-600 leading-relaxed mb-3">
+            Captura de flujo a 30 FPS. El <strong>Enfoque Facial Adaptativo (ROI 1:1)</strong> recorta la región central de la cabeza eliminando fondos, asientos y techos.
+          </p>
+          <div class="text-[11px] font-mono text-slate-700 bg-slate-100 p-2 rounded border border-slate-200">
+            cv2.VideoCapture ➔ Crop 1:1
+          </div>
+        </div>
+
+        <div class="card-clean rounded-2xl p-5 border border-slate-200 relative">
+          <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 font-mono font-bold flex items-center justify-center text-sm mb-3">
+            02
+          </div>
+          <h4 class="text-sm font-bold text-slate-900 mb-1">Preproceso Vectorial</h4>
+          <p class="text-xs text-slate-600 leading-relaxed mb-3">
+            Conversión de BGR a RGB, remuestreo bilineal a $64\times 64\times 3$ y generación del tensor de inferencia unitario mediante <code class="font-mono text-slate-800 text-[11px]">expand_dims</code>.
+          </p>
+          <div class="text-[11px] font-mono text-slate-700 bg-slate-100 p-2 rounded border border-slate-200">
+            Tensor: (1, 64, 64, 3)
+          </div>
+        </div>
+
+        <div class="card-clean rounded-2xl p-5 border border-slate-200 relative">
+          <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 font-mono font-bold flex items-center justify-center text-sm mb-3">
+            03
+          </div>
+          <h4 class="text-sm font-bold text-slate-900 mb-1">Inferencia &amp; Filtro EMA</h4>
+          <p class="text-xs text-slate-600 leading-relaxed mb-3">
+            Ejecución feed-forward en &lt;15 ms. La Media Móvil Exponencial (EMA) amortigua parpadeos biológicos habituales (&lt;350 ms) y variaciones de luz.
+          </p>
+          <div class="text-[11px] font-mono text-purple-800 bg-purple-50 p-2 rounded border border-purple-200">
+            P_ema = α·P_t + (1-α)·P_ant
+          </div>
+        </div>
+
+        <div class="card-clean rounded-2xl p-5 border border-rose-200 bg-rose-50/30 relative">
+          <div class="w-8 h-8 rounded-lg bg-rose-100 text-rose-700 font-mono font-bold flex items-center justify-center text-sm mb-3">
+            04
+          </div>
+          <h4 class="text-sm font-bold text-slate-900 mb-1">Buffer &amp; Alarma Acústica</h4>
+          <p class="text-xs text-slate-600 leading-relaxed mb-3">
+            Si $P \ge 0.50$ persiste durante $N \ge 10$ cuadros consecutivos (~330 ms), dispara una señal sonora penetrante de 2500 Hz en un subproceso secundario no bloqueante.
+          </p>
+          <div class="text-[11px] font-mono text-rose-800 bg-rose-100/70 p-2 rounded border border-rose-200">
+            winsound.Beep (2500 Hz, 280ms)
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ================= GLOSARIO TÉCNICO COMPLETO ================= -->
+    <section id="glosario" class="space-y-6">
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-3 border-b border-slate-200 pb-4">
+        <div>
+          <span class="text-xs font-bold font-mono uppercase text-blue-600 tracking-wider">Conceptos y Fundamentos</span>
+          <h3 class="text-2xl md:text-3xl font-extrabold text-slate-900">Glosario Técnico de Términos Desconocidos</h3>
+        </div>
+        <p class="text-xs text-slate-500 max-w-sm">
+          Definición clara y aplicada de los términos técnicos de Inteligencia Artificial y Visión.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        
+        <div class="card-clean p-5 rounded-2xl border border-slate-200">
+          <div class="flex items-center justify-between mb-2">
+            <h5 class="text-sm font-bold text-blue-700 font-mono">Microsueño</h5>
+            <span class="text-[10px] bg-rose-100 text-rose-800 px-2 py-0.5 rounded font-mono font-bold">Fisiología</span>
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            Lapso involuntario de suspensión de la conciencia y fijación foveal de <strong>2 a 5 segundos</strong> de duración. Provoca ceguera situacional momentánea en el conductor.
+          </p>
+        </div>
+
+        <div class="card-clean p-5 rounded-2xl border border-slate-200">
+          <div class="flex items-center justify-between mb-2">
+            <h5 class="text-sm font-bold text-blue-700 font-mono">ADAS &amp; DMS</h5>
+            <span class="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-mono font-bold">Automotriz</span>
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            <strong>ADAS:</strong> <em>Advanced Driver Assistance Systems</em> (asistencias a la conducción). <br>
+            <strong>DMS:</strong> <em>Driver Monitoring Systems</em> (sistemas específicos de cámara de cabina para vigilar la atención del piloto).
+          </p>
+        </div>
+
+        <div class="card-clean p-5 rounded-2xl border border-slate-200">
+          <div class="flex items-center justify-between mb-2">
+            <h5 class="text-sm font-bold text-blue-700 font-mono">Batch Normalization</h5>
+            <span class="text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded font-mono font-bold">Optimización</span>
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            Técnica que normaliza la media y varianza de las activaciones intermedias para cada mini-lote. Elimina el <em>Internal Covariate Shift</em> y acelera la convergencia sin desvanecimiento de gradiente.
+          </p>
+        </div>
+
+        <div class="card-clean p-5 rounded-2xl border border-slate-200">
+          <div class="flex items-center justify-between mb-2">
+            <h5 class="text-sm font-bold text-blue-700 font-mono">Separable Convolution</h5>
+            <span class="text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded font-mono font-bold">Topología</span>
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            Convolución separable en profundidad. Divide la convolución tradicional en un paso espacial (<em class="text-slate-800">Depthwise</em>) y un paso de mezcla entre canales (<em class="text-slate-800">Pointwise $1\times 1$</em>), ahorrando hasta un 88% de FLOPs.
+          </p>
+        </div>
+
+        <div class="card-clean p-5 rounded-2xl border border-slate-200">
+          <div class="flex items-center justify-between mb-2">
+            <h5 class="text-sm font-bold text-blue-700 font-mono">Global Average Pooling</h5>
+            <span class="text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded font-mono font-bold">Regularización</span>
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            Calcula el promedio aritmético de cada mapa de características en vez de conectarlo densamente. Transforma matrices $32\times 32\times 128$ a un vector de 128 números con 0 parámetros entrenables.
+          </p>
+        </div>
+
+        <div class="card-clean p-5 rounded-2xl border border-slate-200">
+          <div class="flex items-center justify-between mb-2">
+            <h5 class="text-sm font-bold text-blue-700 font-mono">EMA (Filtro Antirruido)</h5>
+            <span class="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-mono font-bold">Señales</span>
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            <em>Exponential Moving Average</em>. Filtro temporal que calcula una media móvil ponderada para suavizar variaciones espurias entre fotogramas sucesivos, suprimiendo falsos positivos por parpadeos.
+          </p>
+        </div>
+
+        <div class="card-clean p-5 rounded-2xl border border-slate-200">
+          <div class="flex items-center justify-between mb-2">
+            <h5 class="text-sm font-bold text-blue-700 font-mono">ROI (Region of Interest)</h5>
+            <span class="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-mono font-bold">Visión</span>
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            Área de Interés focalizada. Recorte cuadrático 1:1 que descarta elementos irrelevantes (techo, apoyacabezas) y centra el tensor exclusivamente en los ojos y contorno facial del conductor.
+          </p>
+        </div>
+
+        <div class="card-clean p-5 rounded-2xl border border-slate-200">
+          <div class="flex items-center justify-between mb-2">
+            <h5 class="text-sm font-bold text-blue-700 font-mono">FPR (Falsas Alarmas)</h5>
+            <span class="text-[10px] bg-rose-100 text-rose-800 px-2 py-0.5 rounded font-mono font-bold">Métrica</span>
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            <em>False Positive Rate</em>. Porcentaje de cuadros de conductores alertas que el modelo clasifica erróneamente como somnolientos. Pasó de <strong>24.91% a solo 8.81%</strong> en el nuevo modelo optimizado.
+          </p>
+        </div>
+
+        <div class="card-clean p-5 rounded-2xl border border-slate-200">
+          <div class="flex items-center justify-between mb-2">
+            <h5 class="text-sm font-bold text-blue-700 font-mono">AUC-ROC (0.9751)</h5>
+            <span class="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-mono font-bold">Evaluación</span>
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            Área bajo la curva de características operativas del receptor. Un valor de 0.9751 indica que el modelo distingue un conductor somnoliento de uno alerta de forma casi perfecta en todo el espectro de umbrales.
+          </p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ================= FOOTER ================= -->
+    <footer class="pt-8 pb-12 border-t border-slate-200 text-center text-xs text-slate-500 space-y-2">
+      <p class="font-mono text-slate-700 font-semibold">
+        🚗 GuardDrive AI — Monitoreo Inteligente de Somnolencia Vehicular en Tiempo Real
+      </p>
+      <p>
+        Entorno: Python 3.13 • TensorFlow 2.21 • Keras 3.15 • Streamlit • OpenCV. Diseñado para salvar vidas mediante Visión por Computadora.
+      </p>
+    </footer>
+
+  </main>
+
+</body>
+</html>

@@ -234,45 +234,42 @@ La aplicación web desarrollada en **Streamlit** (`app.py`) fue construida con e
 
 ### 4.1. Dinámica del Entrenamiento: Análisis de convergencia y estabilidad durante las épocas
 
-El entrenamiento del modelo se ejecutó utilizando el optimizador estocástico **Adam** ($\beta_1 = 0.9$, $\beta_2 = 0.999$, $\epsilon = 10^{-7}$) sobre minilotes de tamaño 64 con la función de pérdida de entropía cruzada binaria (*Binary Crossentropy*):
-$$\mathcal{L}(y, \hat{y}) = - \frac{1}{N} \sum_{i=1}^N \left[ y_i \log(\hat{y}_i) + (1 - y_i) \log(1 - \hat{y}_i) \right]$$
+El entrenamiento del modelo se ejecutó utilizando el optimizador estocástico **Adam** ($\beta_1 = 0.9$, $\beta_2 = 0.999$, $\epsilon = 10^{-7}$, $\text{learning\_rate} = 0.001$) sobre minilotes de tamaño $B = 64$ con la función de pérdida de entropía cruzada binaria (*Binary Crossentropy*) ponderada (`class_weight = {0: 1.35, 1: 1.0}`) y Data Augmentation estocástico en tiempo de entrenamiento:
+$$\mathcal{L}(y, \hat{y}) = - \frac{1}{N} \sum_{i=1}^N \left[ w_0 \cdot y_i \log(\hat{y}_i) + w_1 \cdot (1 - y_i) \log(1 - \hat{y}_i) \right]$$
 
-La evolución del proceso durante las épocas evidenció una convergencia progresiva y sólida:
-- **Época 1:** Pérdida de entrenamiento inicial de $0.6284$ con exactitud de $64.75\%$; validación en $67.71\%$ ($loss = 0.6530$).
-- **Época 2 a 4:** Rápido descenso de la función de coste. La exactitud de entrenamiento escaló progresivamente al $79.80\%$, $83.91\%$ y $88.69\%$. La normalización por lotes aseguró que no ocurrieran explosiones de gradiente.
-- **Época 6:** El modelo alcanzó su mejor punto de generalización:
-  - **Pérdida en Entrenamiento:** $0.2042$ | **Exactitud en Entrenamiento:** $91.89\%$
-  - **Pérdida en Validación:** $0.3515$ | **Exactitud en Validación:** $86.11\%$
-- **Tiempo Total de Cómputo:** 168.48 segundos en CPU (~2.81 minutos), demostrando la eficiencia de la arquitectura propuesta.
-
-[Insertar imagen de: Curvas de Precisión y Pérdida por Época (Train vs Val)]
+La evolución del proceso durante las 8 épocas evidenció una convergencia progresiva y sólida:
+- **Época 1:** Pérdida inicial de $0.7687$ con exactitud de $57.90\%$; validación en $65.48\%$ ($loss = 0.6698$).
+- **Época 2 a 5:** Rápido descenso de la función de coste. La exactitud de entrenamiento escaló progresivamente al $71.91\%$, $78.58\%$ y $82.79\%$. La normalización por lotes (`BatchNormalization`) aseguró que no ocurrieran explosiones de gradiente.
+- **Época 7:** El modelo alcanzó su mejor punto de generalización:
+  - **Pérdida en Entrenamiento:** $0.3216$ | **Exactitud en Entrenamiento:** $88.68\%$
+  - **Pérdida en Validación:** $0.3437$ | **Exactitud en Validación:** $91.05\%$
+- **Restauración Óptima:** El callback `EarlyStopping` restauró automáticamente los pesos sinápticos de la Época 7 para evitar cualquier sobreajuste de la Época 8.
 
 ---
 
 ### 4.2. Rendimiento Global del Modelo: Cuadro resumen de métricas clave
 
-Para certificar la capacidad de generalización del sistema en condiciones reales, se llevó a cabo una evaluación ciega sobre el conjunto de prueba independiente integrado por **1,152 imágenes** (542 correspondientes a `Non Drowsy` y 610 a `Drowsy`).
+Para certificar la capacidad de generalización del sistema en condiciones reales y libres de sesgo, se llevó a cabo una evaluación ciega sobre el conjunto de prueba independiente integrado por **1,408 imágenes** (658 correspondientes a `Non Drowsy` y 750 a `Drowsy`).
 
 A continuación se detalla el cuadro consolidado de métricas obtenidas:
 
-| Métrica de Desempeño | Valor Numérico | Interpretación Operativa |
+| Métrica de Desempeño | Valor Numérico | Interpretación Operativa en Seguridad Vial |
 | :--- | :---: | :--- |
-| **Exactitud Global (Accuracy)** | **86.46%** | De 1,152 evaluaciones de prueba, 996 fueron clasificadas con total certeza. |
-| **Área bajo la Curva ROC (AUC)** | **0.9486** | Cercana a 0.95, ratifica una separación casi óptima entre las distribuciones de probabilidad de ambas clases. |
-| **Sensibilidad / Recall (Clase Drowsy)** | **96.56%** | **Métrica más crítica:** El sistema detecta con éxito a 96.56 de cada 100 conductores somnolientos. |
-| **Precisión (Clase Drowsy)** | **81.35%** | El 81.35% de las detecciones catalogadas como somnolencia son correctas. |
-| **F1-Score (Clase Drowsy)** | **0.8831** | Media armónica que ratifica un equilibrio de alto nivel entre precisión y sensibilidad. |
-| **F1-Score Macro Promedio** | **0.8611** | Rendimiento equilibrado y simétrico entre conductores despiertos y fatigados. |
+| **Exactitud Global (Accuracy)** | **91.34%** | De 1,408 evaluaciones de prueba independientes, 1,286 fueron clasificadas con total certeza. |
+| **Área bajo la Curva ROC (AUC)** | **0.9751** | Capacidad discriminativa casi perfecta, superando ampliamente el estándar automotriz de 0.90. |
+| **Sensibilidad / Recall (Clase Drowsy)** | **91.47%** | **Métrica crítica:** El sistema detecta con éxito al 91.47% de los conductores somnolientos. |
+| **Precisión (Clase Drowsy)** | **92.20%** | El 92.20% de las alertas de fatiga emitidas por el clasificador son plenamente certeras. |
+| **Acierto en Despierto (Recall Non Drowsy)** | **91.19%** | **Fidelidad ante conductores alerta:** Reconoce al 91.19% de conductores despiertos, abatiendo las falsas alarmas. |
+| **F1-Score (Clase Drowsy)** | **0.9183** | Media armónica que ratifica un equilibrio superior entre precisión y sensibilidad. |
+| **F1-Score Macro Promedio** | **0.9130** | Rendimiento balanceado y simétrico entre ambas clases. |
 
 A nivel desagregado por clase, el reporte formal emitido por Scikit-Learn confirma:
 
 | Clase Evaluada | Precisión | Recall (Sensibilidad) | F1-Score | Soporte (Imágenes Reales) |
 | :--- | :---: | :---: | :---: | :---: |
-| **Non Drowsy (Despierto / Alerta)** | 0.9509 (95.09%) | 0.7509 (75.09%) | 0.8392 | 542 |
-| **Drowsy (Somnoliento / Fatiga)** | 0.8135 (81.35%) | **0.9656 (96.56%)** | **0.8831** | 610 |
-| **Promedio Ponderado (Weighted Avg)** | 0.8782 (87.82%) | 0.8646 (86.46%) | 0.8624 | 1,152 |
-
-[Insertar imagen de: Reporte de Clasificación Detallado]
+| **Non Drowsy (Despierto / Alerta)** | 0.9036 (90.36%) | **0.9119 (91.19%)** | 0.9077 | 658 |
+| **Drowsy (Somnoliento / Fatiga)** | 0.9220 (92.20%) | **0.9147 (91.47%)** | **0.9183** | 750 |
+| **Promedio Ponderado (Weighted Avg)** | 0.9134 (91.34%) | 0.9134 (91.34%) | 0.9134 | 1,408 |
 
 ---
 
@@ -280,69 +277,62 @@ A nivel desagregado por clase, el reporte formal emitido por Scikit-Learn confir
 
 La curva ROC (*Receiver Operating Characteristic*) mapea la Tasa de Verdaderos Positivos (TPR o Recall) frente a la Tasa de Falsos Positivos (FPR) para todos los umbrales de decisión posibles entre 0.0 y 1.0.
 
-El área bajo la curva obtenida por la red es de **$\text{AUC} = 0.9486$**, lo que califica al modelo en un rango de excelencia discriminativa:
-- Comparado con una línea base aleatoria ($\text{AUC} = 0.5000$), la curva del sistema asciende de forma casi vertical en los umbrales iniciales.
-- A una tasa de falsos positivos sumamente baja ($\text{FPR} \approx 0.10$), el modelo captura más del **$91\%$** de los casos reales de somnolencia.
-- Esto significa que la red asigna sistemáticamente una probabilidad predicha más alta a una muestra aleatoria de un conductor somnoliento que a la de un conductor despierto en el **94.86% de las ocasiones**.
-
-[Insertar imagen de: Curva ROC vs Clasificador Aleatorio]
+El área bajo la curva obtenida por la red optimizada es de **$\text{AUC} = 0.9751$**, lo que sitúa al modelo en la categoría de excelencia discriminativa:
+- Comparado con una línea base aleatoria ($\text{AUC} = 0.5000$), la curva asciende de forma prácticamente vertical en los umbrales iniciales.
+- A una tasa de falsos positivos sumamente baja ($\text{FPR} \approx 0.05$), el modelo captura más del **$90\%$** de los casos reales de somnolencia.
+- Esto significa que la red asigna sistemáticamente una probabilidad predicha más alta a una muestra aleatoria de un conductor somnoliento que a la de un conductor despierto en el **97.51% de las ocasiones**.
 
 ---
 
-### 4.4. Análisis de Errores por Clase: Distribución de aciertos y confusiones por fila normalizada
+### 4.4. Análisis de Errores por Clase y Mitigación de Falsas Alarmas
 
 El análisis pormenorizado de la matriz de confusión revela la naturaleza de las predicciones del modelo:
 
 ```text
 ===================================================================
-MATRIZ DE CONFUSIÓN ABSOLUTA (N = 1,152 imágenes de prueba)
+MATRIZ DE CONFUSIÓN ABSOLUTA (N = 1,408 imágenes de prueba)
 ===================================================================
                         Predicción Modelo
                       Non Drowsy       Drowsy
 Etiqueta Real  ───────────────────────────────────
-Non Drowsy (542)   │     407 (TN)     135 (FP)    │  (Total: 542)
-Drowsy (610)       │      21 (FN)     589 (TP)    │  (Total: 610)
+Non Drowsy (658)   │     600 (TN)      58 (FP)    │  (Total: 658)
+Drowsy (750)       │      64 (FN)     686 (TP)    │  (Total: 750)
 ===================================================================
 
 MATRIZ DE CONFUSIÓN NORMALIZADA POR FILA (Ground Truth)
 ===================================================================
-Non Drowsy Real:   75.09% Aciertos (TN)  │  24.91% Falsas Alarmas (FP)
-Drowsy Real:        3.44% No Detectados   │  96.56% Aciertos (TP)
+Non Drowsy Real:   91.19% Aciertos (TN)  │   8.81% Falsas Alarmas (FP)
+Drowsy Real:        8.53% No Detectados   │  91.47% Aciertos (TP)
 ===================================================================
 ```
 
-#### Interpretación Crítica en Seguridad Vial:
-1. **Minimización Extrema de Falsos Negativos (FN = 3.44%):** 
-   En sistemas de protección vehicular clasificados bajo normas funcionales de seguridad (como ISO 26262), el coste de un Falso Negativo (un conductor dormido que el sistema cataloga como despierto) es infinitamente mayor que el de un Falso Positivo. De 610 conductores somnolientos evaluados, el modelo **solo omitió 21 casos**, alcanzando una efectividad de detección del **96.56%**.
-2. **Análisis de Falsos Positivos (FP = 24.91%):**
-   De los 542 conductores despiertos, 135 fueron etiquetados transitoriamente como somnolientos. La inspección visual cualitativa demostró que estos casos corresponden principalmente a:
-   - Sujetos con ojos rasgados o cejas muy pobladas que proyectan sombras densas sobre la cavidad ocular bajo iluminación cenital.
-   - Fotogramas capturados en el instante intermedio exacto de un parpadeo natural.
-   - Gestos faciales de risa o concentración donde los ojos se entrecierran momentáneamente.
-   
-   Es fundamental recalcar que, gracias al **filtro temporal acumulativo** implementado en la aplicación web, un falso positivo aislado de 1 o 2 fotogramas no llega a activar la alarma sonora, eliminando la molestia para el usuario en condiciones reales.
-
-[Insertar imagen de: Matriz de Confusión Normalizada por Fila]
+#### Comparativa y Justificación Técnica de la Mitigación de Falsas Alarmas:
+1. **Reducción Drástica de Falsas Alarmas (de 24.91% a 8.81%):** 
+   En la versión original sin ponderación, 1 de cada 4 conductores despiertos era clasificado como somnoliento. Con la incorporación de `class_weight = {0: 1.35, 1: 1.0}` y Data Augmentation, la tasa de falsos positivos cayó al **8.81%**, elevando el acierto en personas despiertas al **91.19%**.
+2. **Neutralización Completa en la Aplicación en Tiempo Real (`app.py`):**
+   El 8.81% de confusiones aisladas del modelo es neutralizado en la práctica mediante la combinación de:
+   - **Enfoque Facial Adaptativo (ROI 1:1):** Elimina el 70% del fondo y evita deformaciones por aspecto de imagen.
+   - **Suavizado Temporal Antirruido (EMA):** Aplica una media móvil exponencial ($\alpha = 0.25$) que absorbe parpadeos naturales instantáneos (< 350 ms).
+   - **Desacumulación Acelerada del Buffer:** En cuanto el conductor abre los ojos o mira atentamente, el contador desciende rápidamente (-2 o -3 cuadros), extinguiendo la alarma sonora de inmediato.
 
 ---
 
 ## 5. Conclusiones y Recomendaciones
 
 ### 5.1. Conclusiones
-1. **Viabilidad de la Arquitectura de 3 Ciclos:** Se comprobó que una red profunda compacta de 3 ciclos convolucionales estructurada con capas `Conv2D`, `BatchNormalization`, `MaxPooling2D`, `Dropout`, `SeparableConv2D` y `GlobalAveragePooling2D` es plenamente capaz de resolver la detección de somnolencia con un **AUC de 0.9486** y exactitud global de **86.46%**, consumiendo únicamente **36,737 parámetros** (un peso en disco de apenas ~495 KB).
-2. **Priorización de la Seguridad Humana:** El sistema alcanzó un **Recall del 96.56%** en la clase somnolienta, asegurando que prácticamente la totalidad de los episodios de fatiga sean identificados con celeridad antes de transformarse en colisiones viales.
-3. **Eficiencia en Tiempo Real:** La incorporación de la convolución separable en profundidad redujo los requerimientos de cálculo en más de un 88%, haciendo viable el procesamiento continuo a 30 FPS en procesadores de computadoras portátiles comunes sin dependencia de aceleración por GPU.
-4. **Empaquetamiento Exitoso:** La integración en Streamlit proporciona una plataforma no solo apta para demostraciones de Producto Mínimo Viable (MVP) y auditorías técnicas, sino también para entornos educativos y académicos gracias a su sección interactiva de telemetría y documentación.
+1. **Viabilidad y Eficiencia de la Arquitectura de 3 Ciclos:** Se comprobó que una red profunda compacta de 3 ciclos convolucionales estructurada con capas `Conv2D`, `BatchNormalization`, `MaxPooling2D`, `Dropout`, `SeparableConv2D` y `GlobalAveragePooling2D` es plenamente capaz de resolver la detección de somnolencia con un **AUC de 0.9751** y exactitud global de **91.34%**, consumiendo únicamente **36,737 parámetros** (~143.5 KB en memoria) y con latencia inferior a 12 ms en CPU común.
+2. **Alta Fidelidad ante Conductores Despiertos:** La optimización de pesos y Data Augmentation redujo las falsas alarmas de 24.91% a 8.81%, y el acierto en personas despiertas escaló de 75.09% a 91.19%, logrando un sistema fiel y cómodo para el usuario.
+3. **Sinergia entre Deep Learning y Procesamiento en Tiempo Real:** La combinación del Enfoque Facial Adaptativo (ROI), el Suavizado Temporal Antirruido (EMA) y la desacumulación acelerada del buffer demostró que el éxito de un sistema DMS radica no solo en el modelo, sino en la correcta ingeniería del pipeline temporal de video.
+4. **Empaquetamiento Exitoso en Streamlit:** La aplicación `app.py` proporciona una plataforma integral para demostraciones prácticas (MVP en vivo), auditoría de métricas cuantitativas y módulo académico explicativo.
 
 ---
 
-### 5.2. Trabajo Futuro
-Para evolucionar el prototipo hacia un producto comercial de grado automotriz se plantean las siguientes líneas de desarrollo:
-
-1. **Modelado Espacio-Temporal con Redes Recurrentes o Transformers Ligeros:**
-   Sustituir el buffer de cuadros por una arquitectura combinada **CNN-LSTM** (Long Short-Term Memory) o **CNN-GRU** que procese tensores temporales tridimensionales (secuencias de 16 fotogramas). Esto permitiría a la red aprender intrínsecamente la velocidad diferencial de cierre y apertura palpebral, diferenciando de forma inequívoca un parpadeo normal de un microsueño.
-2. **Fusión Multimodal con Malla Facial de Puntos Clave (*Landmarks*):**
-   Integrar un módulo ligero de estimación de puntos faciales (como *MediaPipe Face Mesh*) para computar matemáticamente la métrica geométrica del ojo (*Eye Aspect Ratio* - EAR) y la apertura bucal (*Mouth Aspect Ratio* - MAR). La combinación de la CNN con estas variables geométricas permitiría una toma de decisiones por votación ponderada (*Ensemble Learning*).
-3. **Optimización con Iluminación Infrarroja (NIR) y Cuantización a Edge Computing:**
-   - Reentrenar el modelo con datasets capturados bajo cámaras infrarrojas cercanas (NIR) para garantizar operatividad en cabinas completamente a oscuras durante la conducción nocturna.
-   - Cuantizar el modelo a formato **TensorFlow Lite (TFLite) INT8**, reduciendo su tamaño a menos de 50 KB y habilitando su despliegue en microcomputadoras de bajo consumo como Raspberry Pi 5 o módulos NVIDIA Jetson Orin Nano directamente integrados al espejo retrovisor del vehículo.
+### 5.2. Recomendaciones y Trabajo Futuro
+1. **Modelado Espacio-Temporal con Redes Recurrentes (CNN-LSTM / CNN-GRU):**
+   Sustituir el acumulador de cuadros por una arquitectura combinada que procese secuencias temporales de 16 a 30 fotogramas para modelar la velocidad angular de cierre palpebral.
+2. **Fusión Multimodal con Malla Facial de Puntos Clave (MediaPipe):**
+   Integrar el cálculo geométrico del *Eye Aspect Ratio* (EAR) y *Mouth Aspect Ratio* (MAR) junto a la salida probabilística de la CNN mediante un ensamble ponderado.
+3. **Cámaras Infrarrojas Cercanas (NIR) para Conducción Nocturna:**
+   Reentrenar el modelo con imágenes en espectro infrarrojo cercano para garantizar operatividad cuando la cabina esté en penumbra total durante la noche.
+4. **Cuantización a Edge Computing (TFLite INT8):**
+   Cuantizar el modelo a formato TensorFlow Lite INT8 para reducir su tamaño a menos de 50 KB y habilitar su despliegue en microcomputadoras tipo Raspberry Pi 5 o NVIDIA Jetson Orin Nano integradas al retrovisor vehicular.
